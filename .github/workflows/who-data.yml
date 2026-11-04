@@ -1,0 +1,44 @@
+name: who-data
+
+# Pulls WHO index terms, inclusions, exclusions, definitions and coding notes for every MMS code
+# from WHO's own ICD-API container, one language per job. Run by hand; the JSON comes back as artifacts.
+on:
+  workflow_dispatch:
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        lang: [en, fr, es, pt, ar]
+    services:
+      icdapi:
+        image: whoicd/icd-api
+        ports:
+          - 8382:80
+        env:
+          acceptLicense: "true"
+          saveAnalytics: "false"
+          include: 2026-01_${{ matrix.lang }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Wait for the WHO API to load
+        run: |
+          for i in $(seq 1 90); do
+            if curl -sf -H "Accept: application/json" -H "API-Version: v2" -H "Accept-Language: ${{ matrix.lang }}" \
+                 http://localhost:8382/icd/release/11/2026-01/mms/257068234 > /dev/null; then
+              echo "ready after $((i * 10))s"; exit 0
+            fi
+            sleep 10
+          done
+          exit 1
+      - run: python scripts/fetch_who.py --base http://localhost:8382 --lang ${{ matrix.lang }} --workers 8
+      - uses: actions/upload-artifact@v4
+        with:
+          name: who-${{ matrix.lang }}
+          path: data/who/

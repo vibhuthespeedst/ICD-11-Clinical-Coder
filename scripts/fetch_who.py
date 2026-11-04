@@ -7,7 +7,8 @@ Source, either:
   or the online API, with WHO_CLIENT_ID and WHO_CLIENT_SECRET in the environment:
       python scripts/fetch_who.py --base https://id.who.int --lang en
 
-Writes data/who/mms-2026-01-<lang>.json: {code: {"title", "index": [...], "inclusion": [...]}}.
+Writes data/who/mms-2026-01-<lang>.json:
+  {code: {"title", "index", "inclusion", "exclusion": [{"label", "ref"}], "definition", "codingNote"}}.
 """
 import argparse
 import json
@@ -84,8 +85,22 @@ def main():
         e = fetch(a.base, r["uri"], a.lang, auth)
         if not e:
             return r["code"], None
-        title = (e.get("title") or {}).get("@value", "")
-        return r["code"], {"title": title, "index": labels(e.get("indexTerm")), "inclusion": labels(e.get("inclusion"))}
+        def text(key):
+            return (e.get(key) or {}).get("@value", "")
+
+        exclusion = [
+            {"label": x["label"]["@value"], "ref": x.get("linearizationReference", "")}
+            for x in e.get("exclusion") or []
+            if isinstance(x.get("label"), dict) and x["label"].get("@value")
+        ]
+        return r["code"], {
+            "title": text("title"),
+            "index": labels(e.get("indexTerm")),
+            "inclusion": labels(e.get("inclusion")),
+            "exclusion": exclusion,
+            "definition": text("definition"),
+            "codingNote": text("codingNote"),
+        }
 
     result, missing = {}, 0
     with ThreadPoolExecutor(a.workers) as pool:

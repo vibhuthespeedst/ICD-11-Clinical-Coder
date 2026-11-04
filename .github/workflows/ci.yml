@@ -1,0 +1,36 @@
+name: ci
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pip install -r requirements.txt
+      - run: python -m unittest discover -s tests -v
+
+  graders-command:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build from a clean checkout
+        run: docker compose build
+      - name: Run the graders' exact command with no keys
+        run: |
+          cp data/dev_notes.jsonl in/notes.jsonl
+          time docker compose run coder /in/notes.jsonl /out/predictions.jsonl
+          python3 score.py --gold data/dev_notes.jsonl --pred out/predictions.jsonl --mms data/mms-2026-01.json | tee score.txt
+          grep -q "missing predictions 0  invalid codes 0" score.txt
+      - name: Run with networking off and keys that cannot reach anything
+        run: |
+          time docker run --rm --network none \
+            -e ANTHROPIC_API_KEY=not-a-real-key -e OPENAI_API_KEY=not-a-real-key \
+            -v "$PWD/in:/in" -v "$PWD/out:/out" icd11-coder /in/notes.jsonl /out/isolated.jsonl
+          python3 score.py --gold data/dev_notes.jsonl --pred out/isolated.jsonl --mms data/mms-2026-01.json | tee isolated.txt
+          grep -q "missing predictions 0  invalid codes 0" isolated.txt
