@@ -186,3 +186,11 @@ Newest last. Each entry is committed with the work it describes; "Commit" names 
 - **Options:** Trust that the request shape is accepted (cheap, but one wrong field costs the whole model path).
 - **Evidence:** End-to-end test with the fake API rejecting `output_config.format`: one 400, then all 60 notes answered by the model path from fenced replies, no provider dropped. 21 tests pass; dev SCORE unchanged at 53.3.
 - **Revisit:** Drop the fallback once a real call confirms the request shape.
+
+## 24. The commit hook must catch the key I actually have, not the format I expected
+- **When:** 2026-11-05 04:26 IST
+- **Commit:** Commit hook refuses any secret value from .env, whatever its format
+- **Decision:** My Gemini key does not start with `AIza`, so the pattern list would not have caught it. The hook now also reads `.env` and refuses any staged line containing the value of a variable whose name has KEY, TOKEN or SECRET in it (16+ characters), without printing it.
+- **Options:** Add another prefix pattern (breaks again on the next format change).
+- **Evidence:** My first attempt failed: the editor refused to overwrite the hook file, the old hook stayed installed, and my test (a real `git commit` of a file holding a fake key) went through as a local commit. I removed it with a reset to the last pushed commit before anything was pushed, and now test the hook by running it directly. Direct runs: fake key value staged -> refused; a staged file holding only the base URL -> allowed; real `.env` with a clean change -> allowed, nothing printed.
+- **Revisit:** Nothing.

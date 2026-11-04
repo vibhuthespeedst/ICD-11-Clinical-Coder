@@ -1,8 +1,18 @@
 #!/bin/sh
-# Blocks commits that contain something shaped like an API key.
-if git diff --cached -U0 | grep -E '^\+' | grep -qE 'sk-ant-[A-Za-z0-9_-]{10,}|sk-proj-[A-Za-z0-9_-]{10,}|sk-[A-Za-z0-9]{32,}|AIza[0-9A-Za-z_-]{30,}'; then
+# Blocks commits containing an API-key-shaped string or any value from .env, whatever its format.
+staged=$(git diff --cached -U0 | grep -E '^\+' | grep -vE '^\+\+\+ ')
+if printf '%s\n' "$staged" | grep -qE 'sk-ant-[A-Za-z0-9_-]{10,}|sk-proj-[A-Za-z0-9_-]{10,}|sk-[A-Za-z0-9]{32,}|AIza[0-9A-Za-z_-]{30,}'; then
   echo "pre-commit: staged changes contain what looks like an API key. Commit refused." >&2
   exit 1
+fi
+env_file="${HOOK_ENV_FILE:-.env}"
+if [ -f "$env_file" ]; then
+  tr -d '\r' < "$env_file" | grep -E '^[A-Za-z_]*(KEY|TOKEN|SECRET)[A-Za-z_]*=' | cut -d= -f2- | while IFS= read -r value; do
+    if [ "${#value}" -ge 16 ] && printf '%s\n' "$staged" | grep -qF -- "$value"; then
+      echo "pre-commit: staged changes contain a value from $env_file. Commit refused." >&2
+      exit 1
+    fi
+  done || exit 1
 fi
 if git diff --cached --name-only | grep -qE '(^|/)\.env($|\.)' && ! git diff --cached --name-only | grep -qx '.env.example'; then
   echo "pre-commit: refusing to commit a .env file." >&2
