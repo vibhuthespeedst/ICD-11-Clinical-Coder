@@ -1,6 +1,7 @@
 import json
 import re
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 CANDIDATE = re.compile(r"^([0-9A-Z]{4}(?:\.[0-9A-Z]{1,3})?) \| ", re.M)
@@ -16,8 +17,9 @@ class FakeAPI:
     """Local stand-in for the Anthropic and OpenAI HTTP APIs: answers the extract step with a fixed
     diagnosis and the choose step with the first three candidates it was shown."""
 
-    def __init__(self, fail_first=0, reject_schema=False, models=("gpt-5.1-mini",)):
+    def __init__(self, fail_first=0, reject_schema=False, models=("gpt-5.1-mini",), delay=0.0):
         self.requests = []
+        self.delay = delay
         self.fail_first = fail_first
         self.reject_schema = reject_schema
         self.models = list(models)
@@ -43,6 +45,7 @@ class FakeAPI:
 
             def do_POST(self):
                 body = json.loads(self.rfile.read(int(self.headers["content-length"])))
+                time.sleep(api.delay)
                 with api.lock:
                     api.requests.append({"path": self.path, "headers": {k.lower(): v for k, v in self.headers.items()}, "body": body})
                     failing = api.fail_first > 0

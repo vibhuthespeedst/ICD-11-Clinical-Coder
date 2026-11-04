@@ -3,6 +3,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -87,6 +88,23 @@ class EndToEndTest(unittest.TestCase):
             api.close()
         self.check(r, preds)
         self.assertIn("openai:gpt-6-mini", r.stderr)
+
+
+    def test_time_budget_stops_model_calls_and_every_note_keeps_an_answer(self):
+        api = FakeAPI(delay=1.0)
+        start = time.monotonic()
+        try:
+            r, preds = self.run_cli({"ANTHROPIC_API_KEY": "fake-key", "ANTHROPIC_BASE_URL": api.url,
+                                     "CODER_TIME_BUDGET_S": "4", "CODER_WORKERS": "4"})
+        finally:
+            api.close()
+        elapsed = time.monotonic() - start
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(len(preds), 60)
+        self.assertTrue(all(p["codes"] and all(c in VALID for c in p["codes"]) for p in preds))
+        self.assertIn("time budget reached", r.stderr)
+        self.assertNotIn("model predictions for 60/60", r.stderr)
+        self.assertLess(elapsed, 30)
 
 
 if __name__ == "__main__":

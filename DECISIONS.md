@@ -146,3 +146,11 @@ Newest last. Each entry is committed with the work it describes; "Commit" names 
 - **Options:** Ask the graders which models the key allows (asked, no answer yet); fail the provider on the first 400 (loses OpenAI for the whole run).
 - **Evidence:** Two new end-to-end tests against the fake API: with json_schema rejected, all 60 notes still come back from the model path and the last requests use json_object; with gpt-4o, gpt-6-mini and gpt-5.5-mini listed, the run uses gpt-6-mini. 15 tests pass.
 - **Revisit:** Remove the guesswork once the graders say which models the keys allow.
+
+## 19. Check the time guard, 600-note throughput and the bundle before there is a key
+- **When:** 2026-11-05 02:26 IST
+- **Commit:** Test the time budget against a slow fake API
+- **Decision:** Keep 12 workers and the 50-minute stop; leave room for extra calls per note only if they measure better. Make the deliverable once early to catch size or content surprises.
+- **Options:** Wait for the real key to learn timings (too late to change the design if they are bad).
+- **Evidence:** New end-to-end test: fake API at 1 s per call, 4 s budget, 4 workers: the run stops starting notes, all 60 notes keep valid codes, about 10 s in total. One-off run of 600 notes (dev x10) at 1 s per call: 600/600 answered by the model path in 120 s, about 10.5 calls/s with 12 workers, so even 10 s per real call means about 17 minutes. `git bundle create --all`: 5.6 MB, `git bundle verify` okay, clone has all commits, no .env, one author, tests pass and the coder scores 53.3 from the clone.
+- **Revisit:** Real latency and rate limits on the graders' keys.
