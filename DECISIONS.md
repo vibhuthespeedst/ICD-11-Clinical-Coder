@@ -234,3 +234,11 @@ Newest last. Each entry is committed with the work it describes; "Commit" names 
 - **Options:** Drop the hand-made lay-term list, the part most inspired by the dev notes.
 - **Evidence:** Offline dev SCORE with everything on 53.3 (top1 41/60); without my lay-term list 51.7 (40/60), so WHO's synonyms now cover most of what it did; without my abbreviation list 50.0 (37/60); without the chapter 26 and .Y penalties 48.3 (35/60); without any hand rule 44.2 (32/60). The gains come mostly from standard abbreviations and the brief's own .Z rule, which carry to any clinic. Noise: with 60 notes, a top-1 of 68% has a standard error of about 6%, about +/- 3 points on the 75-point core.
 - **Revisit:** Re-run once the synthetic notes exist.
+
+## 30. First real model-path score: 71.7 on dev with a free lite model
+- **When:** 2026-11-05 05:22 IST
+- **Commit:** Record the first model-path dev score (gemini-3.5-flash-lite)
+- **Decision:** Measure with free Gemini lite models (the larger free quota) rather than paid credit, which was the other option. Hold the obvious prompt fix until the synthetic notes can show whether it generalises.
+- **Options:** Tighten the specificity rule now, from the 4 misses (fits the dev set by construction).
+- **Evidence:** gemini-3.5-flash-lite on the 60 dev notes: 59/60 answered by the model path (one per-minute 429 kept its offline codes), 385 s. SCORE 71.7/75 (top1 56/60, top3 60/60), against 53.3 offline. All 4 top-1 misses are specificity, never the wrong disease, and gold sat in slot 2 or 3 every time: FA01.0 for "OA knees" (gold FA01.Z), DA22.0 non-erosive for "GORD, no alarm features" (gold DA22.Z), 5A00.2Y for "primary hypothyroidism, adult onset" (gold 5A00.2Z), BA00.Z for "HTN stage 2" (gold BA00.0, combined). Three are too specific; none of the 61 dev gold codes is a .Y. Caveats: the design was developed on these notes; +/- 3 points of noise; Gemini lite, not the graders' models.
+- **Revisit:** A rule that a specific child needs its defining detail stated, else .Z, and .Y almost never; test it on the synthetic notes first.
