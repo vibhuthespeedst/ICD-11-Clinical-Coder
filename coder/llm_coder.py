@@ -1,3 +1,4 @@
+import hashlib
 import json
 import os
 import re
@@ -26,6 +27,32 @@ def map_icd10(table, code):
     return table.get(c) or table.get(c[:3]) or []
 
 
+class Cached:
+    """Dev-only: replays a provider's earlier answer for an identical request (CODER_CACHE_DIR)."""
+
+    def __init__(self, inner, folder):
+        self.inner, self.folder = inner, folder
+        self.name = inner.name
+        self.is_fatal = inner.is_fatal
+        os.makedirs(folder, exist_ok=True)
+
+    @property
+    def model(self):
+        return self.inner.model
+
+    def complete(self, system, user, schema):
+        blob = json.dumps([self.inner.name, self.inner.model, system, user, schema], sort_keys=True)
+        path = os.path.join(self.folder, hashlib.sha256(blob.encode("utf-8")).hexdigest() + ".json")
+        if os.path.exists(path):
+            with open(path, encoding="utf-8") as f:
+                return json.load(f), 0.0
+        out, cost = self.inner.complete(system, user, schema)
+        if out is not None:
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(out, f)
+        return out, cost
+
+
 def make_providers():
     providers = []
     if os.environ.get("ANTHROPIC_API_KEY"):
@@ -40,7 +67,8 @@ def make_providers():
             providers.append(OpenAILLM())
         except Exception as e:
             print(f"openai client unavailable: {e}", file=sys.stderr)
-    return providers
+    cache = os.environ.get("CODER_CACHE_DIR")
+    return [Cached(p, cache) for p in providers] if cache else providers
 
 
 class Router:

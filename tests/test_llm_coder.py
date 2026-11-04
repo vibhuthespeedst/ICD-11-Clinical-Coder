@@ -135,5 +135,27 @@ class ICD10MapTest(unittest.TestCase):
         self.assertEqual(coder.predict("jiggers on both feet")[0], "1G05")
 
 
+class CacheTest(unittest.TestCase):
+    def test_identical_requests_are_replayed_from_disk(self):
+        import tempfile
+        from coder.llm_coder import Cached
+
+        class Counting(Stub):
+            calls = 0
+
+            def complete(self, system, user, schema):
+                Counting.calls += 1
+                return super().complete(system, user, schema)
+
+        with tempfile.TemporaryDirectory() as d:
+            p = Cached(Counting(EXTRACT, {"codes": ["1F40.Z"]}), d)
+            first = p.complete("s", "u", {"properties": {"codes": {}}})
+            again = p.complete("s", "u", {"properties": {"codes": {}}})
+            other = p.complete("s", "different note", {"properties": {"codes": {}}})
+        self.assertEqual(first[0], again[0])
+        self.assertEqual(again[1], 0.0)
+        self.assertEqual(Counting.calls, 2)
+
+
 if __name__ == "__main__":
     unittest.main()

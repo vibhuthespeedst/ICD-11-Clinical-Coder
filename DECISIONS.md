@@ -113,3 +113,19 @@ Newest last. Each entry is committed with the work it describes; "Commit" names 
 - **Options:** All of a code's terms in one document (tried: SCORE fell 41.7 -> 35.4, all languages 33.8; "Burn of face" with its "burn of nose" term beat Acute sinusitis, and 16 long "not confirmed" TB terms beat confirmed TB); all five languages on (51.2 on the English dev notes, 27 s index build).
 - **Evidence:** SCORE 41.7 -> 53.3 (top1 31 -> 41 of 60, top3 38 -> 46). Synonym weight 0.8 to 1.0 all give 52.9-53.3 (0.7 gives 50.4), so 0.9 is not a lucky value. Index builds in 5.5 s, 5 ms per note.
 - **Revisit:** Definitions, exclusions and coding notes in the choose prompt; French, Spanish, Portuguese and Arabic terms for non-English notes once the synthetic set exists.
+
+## 15. Tried and dropped: end the diagnosis span where the plan starts
+- **When:** 2026-11-05 01:54 IST
+- **Commit:** Cache model answers on disk for dev runs only
+- **Decision:** Keep the diagnosis span as it is. The idea was to stop the weighted "Dx:" span at a dash, a semicolon or words such as start, plan, review, because "Dx: HTN stage 2 – start Amlodipine, low salt diet" scored the WHO term "low salt syndrome" (hyponatraemia) above hypertension.
+- **Options:** The cut above; leave it.
+- **Evidence:** SCORE 53.3 -> 52.5 (top1 41 -> 40). It fixes nothing the model path won't, so not worth a rule.
+- **Revisit:** Only if the no-key path turns out to matter.
+
+## 16. Cache model answers on disk, for dev runs only
+- **When:** 2026-11-05 01:54 IST
+- **Commit:** Cache model answers on disk for dev runs only
+- **Decision:** When `CODER_CACHE_DIR` is set (`scripts/run_dev.sh` sets it to `work/cache`), each provider answer is stored under a hash of provider, model, prompt and schema, and an identical request is replayed at no cost. Changing only the choose prompt then re-runs only the choose calls. Compose never passes the variable, so graded runs are never cached.
+- **Options:** No cache (the free Gemini tier has daily request limits and one dev run is 120 calls).
+- **Evidence:** Unit test: second identical request served from disk at cost 0, a different note still calls the model. CI on fcff27f: graders' command 53.3 in 8.7 s; --network none 53.3 in 22.6 s.
+- **Revisit:** Turn it off when measuring run-to-run variance.
