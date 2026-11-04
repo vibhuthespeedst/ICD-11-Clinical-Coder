@@ -3,14 +3,16 @@ import json
 from .mms import DATA
 
 
-def load_terms():
-    """Extra search terms per code from WHO files in data/who/, if any were downloaded."""
+def load_terms(langs=("en",)):
+    """Extra search terms per code from WHO files in data/who/, English first."""
     terms = {}
     folder = DATA / "who"
     if not folder.is_dir():
         return terms
     for path in sorted(folder.glob("mms-*-*.json"), key=lambda p: (not p.stem.endswith("-en"), p.name)):
         lang = path.stem.rsplit("-", 1)[-1]
+        if lang not in langs:
+            continue
         for code, e in json.loads(path.read_text(encoding="utf-8")).items():
             extra = list(e.get("index", [])) + list(e.get("inclusion", []))
             if lang != "en" and e.get("title"):
