@@ -38,7 +38,10 @@ def main(argv):
     start = time.monotonic()
     deadline = start + float(os.environ.get("CODER_TIME_BUDGET_S", "3000"))
     out_path = argv[2]
-    notes = read_notes(argv[1])
+    try:
+        notes = read_notes(argv[1])
+    except OSError as e:
+        sys.exit(f"cannot read the input file: {describe(e)}")
     os.makedirs(os.path.dirname(os.path.abspath(out_path)), exist_ok=True)
 
     offline = load_offline()
@@ -48,7 +51,10 @@ def main(argv):
             preds[n["id"]] = offline.predict(n["text"])
         except Exception as e:
             print(f"{n['id']}: offline coder failed: {describe(e)}", file=sys.stderr)
-    write_predictions(out_path, notes, preds)
+    try:
+        write_predictions(out_path, notes, preds)
+    except OSError as e:
+        sys.exit(f"cannot write the output file: {describe(e)}")
     print(f"offline predictions written for {len(notes)} notes", file=sys.stderr)
 
     providers = make_providers()
