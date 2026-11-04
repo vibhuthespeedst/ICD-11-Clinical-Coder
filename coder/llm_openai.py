@@ -42,6 +42,8 @@ class OpenAILLM:
             system += INSTRUCTION + json.dumps(schema)
             if MODES[mode] == "json_object":
                 kwargs["response_format"] = {"type": "json_object"}
+        if self.client.base_url.host == "api.openai.com":
+            kwargs["store"] = False
         return self.client.chat.completions.create(
             model=self.model,
             messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],

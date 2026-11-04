@@ -18,8 +18,9 @@ class FakeAPI:
     diagnosis and the choose step with the first three candidates it was shown."""
 
     def __init__(self, fail_first=0, reject_schema=False, models=("gpt-5.1-mini",), delay=0.0, rate_per_sec=None,
-                 reject_anthropic_format=False):
+                 reject_anthropic_format=False, echo_error=False):
         self.requests = []
+        self.echo_error = echo_error
         self.delay = delay
         self.rate_per_sec = rate_per_sec
         self.reject_anthropic_format = reject_anthropic_format
@@ -65,6 +66,9 @@ class FakeAPI:
                             api.recent.append(now)
                 if failing:
                     self.send(429, {"type": "error", "error": {"type": "rate_limit_error", "message": "slow down"}}, [("retry-after", "1" if api.rate_per_sec else "0")])
+                elif self.path.endswith("/v1/messages") and api.echo_error:
+                    note = body["messages"][0]["content"][:120]
+                    self.send(400, {"type": "error", "error": {"type": "invalid_request_error", "message": "cannot parse: " + note}})
                 elif self.path.endswith("/v1/messages"):
                     fmt = (body.get("output_config") or {}).get("format")
                     if api.reject_anthropic_format and fmt:

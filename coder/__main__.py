@@ -4,7 +4,7 @@ import sys
 import time
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 
-from .llm_coder import LLMCoder, Router, make_providers
+from .llm_coder import LLMCoder, Router, describe, make_providers
 from .offline import FALLBACK, load_offline
 
 
@@ -47,7 +47,7 @@ def main(argv):
         try:
             preds[n["id"]] = offline.predict(n["text"])
         except Exception as e:
-            print(f"{n['id']}: offline coder failed: {e}", file=sys.stderr)
+            print(f"{n['id']}: offline coder failed: {describe(e)}", file=sys.stderr)
     write_predictions(out_path, notes, preds)
     print(f"offline predictions written for {len(notes)} notes", file=sys.stderr)
 
@@ -66,7 +66,7 @@ def main(argv):
         try:
             return n["id"], coder.predict(n["text"])
         except Exception as e:
-            print(f"{n['id']}: {type(e).__name__}: {e}", file=sys.stderr)
+            print(f"{n['id']}: {describe(e)}", file=sys.stderr)
             return n["id"], None
 
     upgraded = 0

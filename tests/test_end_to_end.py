@@ -19,12 +19,12 @@ CLEAN = ("ANTHROPIC_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_BASE_URL", "OPENAI_BA
 class EndToEndTest(unittest.TestCase):
     """Runs the real CLI and the real SDKs against a local fake API."""
 
-    def run_cli(self, extra):
+    def run_cli(self, extra, notes=NOTES):
         env = {k: v for k, v in os.environ.items() if k not in CLEAN}
         env.update(extra)
         with tempfile.TemporaryDirectory() as d:
             out = os.path.join(d, "predictions.jsonl")
-            r = subprocess.run([sys.executable, "-m", "coder", str(NOTES), out], cwd=ROOT, env=env,
+            r = subprocess.run([sys.executable, "-m", "coder", str(notes), out], cwd=ROOT, env=env,
                                capture_output=True, text=True, timeout=300)
             preds = [json.loads(line) for line in open(out, encoding="utf-8")]
         return r, preds
@@ -130,6 +130,39 @@ class EndToEndTest(unittest.TestCase):
         self.assertNotIn("format", posts[-1]["body"].get("output_config", {}))
         self.assertIn("JSON Schema", json.dumps(posts[-1]["body"]["system"]))
         self.assertNotIn("disabled", r.stderr)
+
+
+    def test_direct_identifiers_never_reach_the_provider(self):
+        note = ("Name: Achieng Otieno\nTel: 0712 345 678\nS: 28F seen with Mrs Wanjiru Kamau, ID 12345678, DOB 12/03/1990. "
+                "Fever and chills x3/7. BS for MPS: P. falciparum seen.\nA: Uncomplicated falciparum malaria.")
+        api = FakeAPI()
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "notes.jsonl")
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(json.dumps({"id": "n1", "text": note}) + "\n")
+            try:
+                r, preds = self.run_cli({"ANTHROPIC_API_KEY": "fake-key", "ANTHROPIC_BASE_URL": api.url}, notes=path)
+            finally:
+                api.close()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertTrue(preds[0]["codes"])
+        sent = json.dumps([q["body"] for q in api.requests])
+        self.assertEqual(len(api.requests), 2)
+        for identifier in ("Achieng", "Otieno", "0712", "Wanjiru", "Kamau", "12345678", "12/03/1990"):
+            self.assertNotIn(identifier, sent)
+        self.assertIn("Uncomplicated falciparum malaria", sent)
+
+    def test_provider_error_bodies_are_not_logged(self):
+        api = FakeAPI(echo_error=True)
+        try:
+            r, preds = self.run_cli({"ANTHROPIC_API_KEY": "fake-key", "ANTHROPIC_BASE_URL": api.url})
+        finally:
+            api.close()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(len(preds), 60)
+        self.assertIn("BadRequestError 400", r.stderr)
+        self.assertNotIn("cannot parse", r.stderr)
+        self.assertNotIn("falciparum", r.stderr)
 
 
 if __name__ == "__main__":

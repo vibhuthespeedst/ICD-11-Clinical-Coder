@@ -54,5 +54,5 @@ def load_offline():
             with open(INDEX, "rb") as f:
                 return pickle.load(f)
         except Exception as e:
-            print(f"prebuilt index unusable ({e}), building", file=sys.stderr)
+            print(f"prebuilt index unusable ({type(e).__name__}), building", file=sys.stderr)
     return OfflineCoder()

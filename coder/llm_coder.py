@@ -9,6 +9,7 @@ import time
 
 from . import prompts
 from .mms import DATA
+from .redact import redact
 from .text import weighted_query, tokens
 
 CODE_SHAPE = re.compile(r"^[0-9A-Z]{4}(\.[0-9A-Z]{1,3})?$")
@@ -63,15 +64,23 @@ def make_providers():
             from .llm_anthropic import AnthropicLLM
             providers.append(AnthropicLLM())
         except Exception as e:
-            print(f"anthropic client unavailable: {e}", file=sys.stderr)
+            print(f"anthropic client unavailable: {describe(e)}", file=sys.stderr)
     if os.environ.get("OPENAI_API_KEY"):
         try:
             from .llm_openai import OpenAILLM
             providers.append(OpenAILLM())
         except Exception as e:
-            print(f"openai client unavailable: {e}", file=sys.stderr)
+            print(f"openai client unavailable: {describe(e)}", file=sys.stderr)
     cache = os.environ.get("CODER_CACHE_DIR")
+    if cache and providers:
+        print(f"dev cache on: model answers are stored in {cache}; never use it with real patient notes", file=sys.stderr)
     return [Cached(p, cache) for p in providers] if cache else providers
+
+
+def describe(err):
+    """Error type and HTTP status only: provider error bodies can echo parts of the note."""
+    status = getattr(err, "status_code", None)
+    return type(err).__name__ + (f" {status}" if status else "")
 
 
 class Throttle:
@@ -231,12 +240,13 @@ class LLMCoder:
         return "\n".join(lines)
 
     def predict(self, note):
-        extracted = self.router.complete(prompts.EXTRACT_SYSTEM, prompts.extract_prompt(note), prompts.EXTRACT_SCHEMA)
+        sent = redact(note)
+        extracted = self.router.complete(prompts.EXTRACT_SYSTEM, prompts.extract_prompt(sent), prompts.EXTRACT_SCHEMA)
         if not extracted:
             return None
         cands = self.candidates(note, extracted)
         chosen = self.router.complete(
-            prompts.CHOOSE_SYSTEM, prompts.choose_prompt(note, extracted, self.render(cands)), prompts.CHOOSE_SCHEMA
+            prompts.CHOOSE_SYSTEM, prompts.choose_prompt(sent, extracted, self.render(cands)), prompts.CHOOSE_SCHEMA
         )
         out = []
         mapped = [c for c10 in extracted.get("icd10_codes", []) for c in map_icd10(self.icd10, c10)]
