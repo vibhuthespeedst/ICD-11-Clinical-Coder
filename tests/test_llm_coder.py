@@ -157,5 +157,52 @@ class CacheTest(unittest.TestCase):
         self.assertEqual(Counting.calls, 2)
 
 
+class RateLimited(Exception):
+    pass
+
+
+class Throttled(Stub):
+    def __init__(self, extract, choose, failures):
+        super().__init__(extract, choose)
+        self.failures = failures
+
+    def complete(self, system, user, schema):
+        if self.failures > 0:
+            self.failures -= 1
+            raise RateLimited()
+        return super().complete(system, user, schema)
+
+    @staticmethod
+    def is_transient(err):
+        return isinstance(err, RateLimited)
+
+
+class RateLimitTest(unittest.TestCase):
+    def test_rate_limits_back_off_and_never_drop_the_provider(self):
+        from coder.llm_coder import Router as R
+        p = Throttled(EXTRACT, {"codes": ["1F40.Z"]}, failures=14)
+        router = R([p], budget_usd=1.0, max_failures=3, retries=6, backoff=0.001)
+        coder = LLMCoder(OFFLINE, router)
+        results = []
+        for _ in range(4):
+            try:
+                results.append(coder.predict(NOTE))
+            except RateLimited:
+                results.append(None)
+        self.assertTrue(router.alive)
+        self.assertEqual(results[-1][0], "1F40.Z")
+        self.assertLess(router.throttle.limit, router.throttle.max)
+
+    def test_throttle_halves_then_recovers(self):
+        from coder.llm_coder import Throttle
+        t = Throttle(8)
+        t.slow_down()
+        t.slow_down()
+        self.assertEqual(t.limit, 2)
+        for _ in range(2 + 3):
+            t.success()
+        self.assertEqual(t.limit, 4)
+
+
 if __name__ == "__main__":
     unittest.main()

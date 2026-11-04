@@ -1,9 +1,13 @@
-from .mms import MMS
+import pickle
+import sys
+
+from .mms import DATA, MMS
 from .search import Index
 from .text import weighted_query
 from .who import load_terms
 
 FALLBACK = ["CA07.0", "MG26", "QA0Z"]
+INDEX = DATA / "offline-index.pkl"
 
 
 class OfflineCoder:
@@ -41,3 +45,14 @@ class OfflineCoder:
             if len(out) == n:
                 break
         return out or FALLBACK[:n]
+
+
+def load_offline():
+    """The index pickled at image build time (python -m coder.prebuild), else a fresh build."""
+    if INDEX.exists():
+        try:
+            with open(INDEX, "rb") as f:
+                return pickle.load(f)
+        except Exception as e:
+            print(f"prebuilt index unusable ({e}), building", file=sys.stderr)
+    return OfflineCoder()

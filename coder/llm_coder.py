@@ -1,9 +1,11 @@
 import hashlib
 import json
 import os
+import random
 import re
 import sys
 import threading
+import time
 
 from . import prompts
 from .mms import DATA
@@ -34,6 +36,7 @@ class Cached:
         self.inner, self.folder = inner, folder
         self.name = inner.name
         self.is_fatal = inner.is_fatal
+        self.is_transient = getattr(inner, "is_transient", lambda e: False)
         os.makedirs(folder, exist_ok=True)
 
     @property
@@ -71,13 +74,51 @@ def make_providers():
     return [Cached(p, cache) for p in providers] if cache else providers
 
 
-class Router:
-    """Tries providers in order; drops one after an auth error or max_failures errors in a row."""
+class Throttle:
+    """Caps calls in flight: halves the cap on a rate limit, adds one back after cap-many successes."""
 
-    def __init__(self, providers, budget_usd, max_failures=10):
+    def __init__(self, limit):
+        self.max = self.limit = max(1, limit)
+        self.active = self.ok = 0
+        self.cond = threading.Condition()
+
+    def __enter__(self):
+        with self.cond:
+            while self.active >= self.limit:
+                self.cond.wait(timeout=1.0)
+            self.active += 1
+
+    def __exit__(self, *exc):
+        with self.cond:
+            self.active -= 1
+            self.cond.notify_all()
+
+    def slow_down(self):
+        with self.cond:
+            old, self.limit, self.ok = self.limit, max(1, self.limit // 2), 0
+        if self.limit != old:
+            print(f"rate limited: at most {self.limit} calls in flight", file=sys.stderr)
+
+    def success(self):
+        with self.cond:
+            self.ok += 1
+            if self.limit < self.max and self.ok >= self.limit:
+                self.limit, self.ok = self.limit + 1, 0
+                self.cond.notify_all()
+
+
+class Router:
+    """Tries providers in order. Rate limits and 5xx back off and retry; an auth error, or
+    max_failures other errors in a row, drops the provider for the rest of the run."""
+
+    def __init__(self, providers, budget_usd, max_failures=10, max_inflight=12, deadline=None, retries=6, backoff=1.0):
         self.providers = list(providers)
         self.budget = budget_usd
         self.max_failures = max_failures
+        self.deadline = deadline
+        self.retries = retries
+        self.backoff = backoff
+        self.throttle = Throttle(max_inflight)
         self.spent = 0.0
         self.failures = {}
         self.lock = threading.Lock()
@@ -92,21 +133,39 @@ class Router:
                 self.providers.remove(p)
                 print(f"{p.name}: disabled ({why})", file=sys.stderr)
 
+    def _call(self, p, system, user, schema):
+        transient = getattr(p, "is_transient", lambda e: False)
+        for attempt in range(self.retries):
+            try:
+                with self.throttle:
+                    return p.complete(system, user, schema)
+            except Exception as e:
+                if not transient(e) or attempt == self.retries - 1:
+                    raise
+                self.throttle.slow_down()
+                wait = min(30.0, self.backoff * 2.0 ** attempt) * random.uniform(0.5, 1.0)
+                if self.deadline is not None and time.monotonic() + wait > self.deadline:
+                    raise
+                time.sleep(wait)
+
     def complete(self, system, user, schema):
         last = None
         for p in list(self.providers):
             try:
-                out, cost = p.complete(system, user, schema)
+                out, cost = self._call(p, system, user, schema)
             except Exception as e:
                 if p.is_fatal(e):
                     self._drop(p, type(e).__name__)
                     continue
                 last = e
+                if getattr(p, "is_transient", lambda e: False)(e):
+                    continue
                 with self.lock:
                     n = self.failures[p.name] = self.failures.get(p.name, 0) + 1
                 if n >= self.max_failures:
                     self._drop(p, f"{n} errors in a row, last {type(e).__name__}")
                 continue
+            self.throttle.success()
             with self.lock:
                 self.spent += cost
                 self.failures[p.name] = 0

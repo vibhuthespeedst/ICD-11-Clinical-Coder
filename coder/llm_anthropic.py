@@ -65,3 +65,7 @@ class AnthropicLLM:
     def is_fatal(err):
         return isinstance(err, (anthropic.AuthenticationError, anthropic.PermissionDeniedError, anthropic.NotFoundError))
 
+    @staticmethod
+    def is_transient(err):
+        return isinstance(err, anthropic.RateLimitError) or (isinstance(err, anthropic.APIStatusError) and err.status_code >= 500)
+

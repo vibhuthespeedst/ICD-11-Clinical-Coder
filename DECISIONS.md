@@ -162,3 +162,19 @@ Newest last. Each entry is committed with the work it describes; "Commit" names 
 - **Options:** `docker-compose.override.yml` (auto-loaded, wrong); keep the mounts (told not to).
 - **Evidence:** CI now checks that `docker compose config coder` has no /in or /out mount, runs the graders' command with `-v in:/in:ro -v out:/out` supplied from outside (the program writes only its output file, so a read-only /in is fine), and checks the dev override still works.
 - **Revisit:** Nothing.
+
+## 21. Rate limits slow the run down instead of switching a provider off
+- **When:** 2026-11-05 03:45 IST
+- **Commit:** Back off on rate limits with an adaptive cap; load a prebuilt index
+- **Decision:** Sugen cannot guarantee any rate limit and asked for bounded concurrency, timeouts and backoff. Before this, a rate-limited call (after the SDK's own 3 retries) counted towards "10 errors in a row", so a burst of 429s could switch the model path off for the rest of the run. Now 429 and 5xx count as transient: the call backs off with jitter (1 s doubling to 30 s, at most 6 tries, never past the time budget) and a shared cap on calls in flight halves on each rate limit and grows back by one after cap-many successes. Connection errors and timeouts still count towards dropping a provider, since a dead proxy should not cost every note its retries.
+- **Options:** Fixed lower concurrency (wastes a generous limit); keep the drop rule (loses the model path under a strict limit).
+- **Evidence:** Unit test: 14 rate-limit errors with the drop threshold at 3, provider kept and later calls succeed. End to end against a fake API allowing 4 requests a second: 311 requests, 191 answered 429, cap moved 12 -> 6 -> 3 -> 1 -> 4 -> 3 -> 4 -> 2 -> 4, all 60 notes answered by the model path in 51 s, no provider dropped.
+- **Revisit:** The cap's starting value once real limits are seen.
+
+## 22. Build the search index at image build time
+- **When:** 2026-11-05 03:45 IST
+- **Commit:** Back off on rate limits with an adaptive cap; load a prebuilt index
+- **Decision:** Sugen confirmed initialisation counts towards the 60 minutes and image build does not. The Dockerfile now runs `python -m coder.prebuild`, which pickles the offline coder (MMS, WHO terms, BM25 index) into the image; the run loads it and falls back to building if it is missing or unreadable (local runs, tests). The pickle is git- and docker-ignored, so it is always built from the code in the image.
+- **Options:** Build at start (works, 6.9 s); ship a prebuilt file in the repo (stale the moment code changes).
+- **Evidence:** Build at start 6.9 s; pickle 16 MB, loads in 0.2 s, same answers. Offline run of the 60 dev notes: about 0.6 s with the pickle. 19 tests pass.
+- **Revisit:** Nothing.

@@ -5,7 +5,7 @@ import time
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 
 from .llm_coder import LLMCoder, Router, make_providers
-from .offline import FALLBACK, OfflineCoder
+from .offline import FALLBACK, load_offline
 
 
 def read_notes(path):
@@ -41,7 +41,7 @@ def main(argv):
     notes = read_notes(argv[1])
     os.makedirs(os.path.dirname(os.path.abspath(out_path)), exist_ok=True)
 
-    offline = OfflineCoder()
+    offline = load_offline()
     preds = {}
     for n in notes:
         try:
@@ -55,7 +55,8 @@ def main(argv):
     if not providers:
         print("no API key set: keeping offline predictions", file=sys.stderr)
         return
-    router = Router(providers, float(os.environ.get("CODER_BUDGET_USD", "5.5")))
+    workers = int(os.environ.get("CODER_WORKERS", "12"))
+    router = Router(providers, float(os.environ.get("CODER_BUDGET_USD", "5.5")), max_inflight=workers, deadline=deadline)
     coder = LLMCoder(offline, router)
     print(f"model path: {', '.join(f'{p.name}:{p.model}' for p in providers)}", file=sys.stderr)
 
@@ -69,7 +70,7 @@ def main(argv):
             return n["id"], None
 
     upgraded = 0
-    pool = ThreadPoolExecutor(max_workers=int(os.environ.get("CODER_WORKERS", "12")))
+    pool = ThreadPoolExecutor(max_workers=workers)
     pending = {pool.submit(work, n) for n in notes}
     while pending:
         done, pending = wait(pending, timeout=max(1.0, deadline - time.monotonic()), return_when=FIRST_COMPLETED)

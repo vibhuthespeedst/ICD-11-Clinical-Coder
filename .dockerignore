@@ -8,3 +8,4 @@ in
 work
 __pycache__
 *.pyc
+data/offline-index.pkl

@@ -69,3 +69,7 @@ class OpenAILLM:
     @staticmethod
     def is_fatal(err):
         return isinstance(err, (openai.AuthenticationError, openai.PermissionDeniedError, openai.NotFoundError))
+
+    @staticmethod
+    def is_transient(err):
+        return isinstance(err, openai.RateLimitError) or (isinstance(err, openai.APIStatusError) and err.status_code >= 500)

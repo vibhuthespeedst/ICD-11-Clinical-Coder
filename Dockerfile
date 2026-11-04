@@ -5,4 +5,5 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY coder ./coder
 COPY data ./data
+RUN python -m coder.prebuild
 ENTRYPOINT ["python", "-m", "coder"]

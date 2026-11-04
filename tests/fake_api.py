@@ -17,9 +17,12 @@ class FakeAPI:
     """Local stand-in for the Anthropic and OpenAI HTTP APIs: answers the extract step with a fixed
     diagnosis and the choose step with the first three candidates it was shown."""
 
-    def __init__(self, fail_first=0, reject_schema=False, models=("gpt-5.1-mini",), delay=0.0):
+    def __init__(self, fail_first=0, reject_schema=False, models=("gpt-5.1-mini",), delay=0.0, rate_per_sec=None):
         self.requests = []
         self.delay = delay
+        self.rate_per_sec = rate_per_sec
+        self.recent = []
+        self.rejected = 0
         self.fail_first = fail_first
         self.reject_schema = reject_schema
         self.models = list(models)
@@ -50,8 +53,16 @@ class FakeAPI:
                     api.requests.append({"path": self.path, "headers": {k.lower(): v for k, v in self.headers.items()}, "body": body})
                     failing = api.fail_first > 0
                     api.fail_first -= 1
+                    if api.rate_per_sec:
+                        now = time.monotonic()
+                        api.recent = [t for t in api.recent if now - t < 1.0]
+                        if len(api.recent) >= api.rate_per_sec:
+                            failing = True
+                            api.rejected += 1
+                        else:
+                            api.recent.append(now)
                 if failing:
-                    self.send(429, {"type": "error", "error": {"type": "rate_limit_error", "message": "slow down"}}, [("retry-after", "0")])
+                    self.send(429, {"type": "error", "error": {"type": "rate_limit_error", "message": "slow down"}}, [("retry-after", "1" if api.rate_per_sec else "0")])
                 elif self.path.endswith("/v1/messages"):
                     schema = body["output_config"]["format"]["schema"]
                     out = api.answer(schema, body["messages"][0]["content"])

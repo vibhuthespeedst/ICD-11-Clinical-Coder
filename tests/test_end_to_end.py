@@ -107,5 +107,17 @@ class EndToEndTest(unittest.TestCase):
         self.assertLess(elapsed, 30)
 
 
+    def test_sustained_rate_limit_slows_down_without_losing_the_model_path(self):
+        api = FakeAPI(rate_per_sec=4)
+        try:
+            r, preds = self.run_cli({"ANTHROPIC_API_KEY": "fake-key", "ANTHROPIC_BASE_URL": api.url})
+        finally:
+            api.close()
+        self.check(r, preds)
+        self.assertNotIn("disabled", r.stderr)
+        self.assertIn("rate limited: at most", r.stderr)
+        self.assertGreater(api.rejected, 0)
+
+
 if __name__ == "__main__":
     unittest.main()
