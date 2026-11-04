@@ -87,7 +87,7 @@ Newest last. Each entry is committed with the work it describes; "Commit" names 
 - **Commit:** CI: build from a clean checkout and run the graders' command, also with networking off
 - **Decision:** No Docker on this laptop, and a build that fails from a clean clone means rejection without review. A private GitHub repo runs, on every push: the unit tests; `docker compose build` from a fresh checkout; the exact `docker compose run coder /in/notes.jsonl /out/predictions.jsonl` with no keys, failing unless every id is present and every code valid; and the image again with `--network none` and fake keys, which is the graders' sandbox with a broken proxy.
 - **Options:** Install Docker Desktop locally (8 GB RAM, C: nearly full); trust the Dockerfile unbuilt. Private, not public: the pack is Sugen's and the window is open.
-- **Evidence:** Pending first run.
+- **Evidence:** First run green (commit dadd584): image builds from a clean checkout; the graders' command with no keys wrote 60/60 valid predictions in 1.9 s (SCORE 41.7); with \`--network none\` and fake keys for both providers, both were dropped after 10 errors and the run still wrote 60/60 valid predictions in 15 s; 9 unit tests pass.
 - **Revisit:** Nothing, if green.
 
 ## 12. Pull WHO data on Actions with WHO's container
