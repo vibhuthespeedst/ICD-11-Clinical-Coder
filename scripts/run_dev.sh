@@ -1,11 +1,13 @@
 #!/bin/sh
-# Runs the coder on the dev notes with keys from .env (never printed), then scores it.
+# Runs the coder on dev notes with settings from .env (never printed; variables already set win), then scores it.
 set -e
 cd "$(dirname "$0")/.."
 if [ -f .env ]; then
-  set -a
-  eval "$(tr -d '\r' < .env | grep -E '^[A-Z_]+=')"
-  set +a
+  for line in $(tr -d '\r' < .env | grep -E '^[A-Z_]+=.'); do
+    name="${line%%=*}"
+    eval "set_already=\${$name+yes}"
+    [ "$set_already" = yes ] || export "$line"
+  done
 fi
 PY="${PY:-.venv/Scripts/python}"
 export CODER_CACHE_DIR="${CODER_CACHE_DIR:-work/cache}"

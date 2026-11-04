@@ -194,3 +194,11 @@ Newest last. Each entry is committed with the work it describes; "Commit" names 
 - **Options:** Add another prefix pattern (breaks again on the next format change).
 - **Evidence:** My first attempt failed: the editor refused to overwrite the hook file, the old hook stayed installed, and my test (a real `git commit` of a file holding a fake key) went through as a local commit. I removed it with a reset to the last pushed commit before anything was pushed, and now test the hook by running it directly. Direct runs: fake key value staged -> refused; a staged file holding only the base URL -> allowed; real `.env` with a clean change -> allowed, nothing printed.
 - **Revisit:** Nothing.
+
+## 25. Dev model: gemini-3.6-flash on the free tier; models cannot code ICD-11 from memory
+- **When:** 2026-11-05 04:35 IST
+- **Commit:** Dev runs: settings already in the environment win over .env
+- **Decision:** Develop against `gemini-3.6-flash`, the newest model the free key actually serves. `scripts/run_dev.sh` now lets variables already set in the shell override `.env`, so models can be tried without editing the key file.
+- **Options:** `gemini-3.8-flash` (every call rate-limited or timed out; a 3-note run hit the 300 s budget with 0 model answers, all offline answers kept); `gemini-flash-latest` and `gemini-3.7-flash` (503); the 2.5 models (listed but 404); Pro models (429, no free quota).
+- **Evidence:** One request per model asking directly for "uncomplicated Plasmodium falciparum malaria" (gold 1F40.Z): the five that answered gave 1F40.1, 1F40.01 (not a valid code), 1F40.0, 1F40.0, 1F40.Z was never given. That is the case for the shortlist and the ICD-10 conversion rather than trusting a model's memory of ICD-11. Smoke test of 3 dev notes on gemini-3.6-flash: all 3 answered by the model path, all 3 top-1 correct, 46 s under free-tier rate limiting (the cap fell to 1 call in flight).
+- **Revisit:** These are Gemini numbers; the graders run Claude or OpenAI.
