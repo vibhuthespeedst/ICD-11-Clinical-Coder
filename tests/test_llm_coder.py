@@ -29,7 +29,7 @@ class Stub:
 
 
 NOTE = "S: 28M fever, chills. BS for MPS: P. falciparum seen. A: Uncomplicated falciparum malaria."
-EXTRACT = {"language": "English", "code_guesses": ["1F40"],
+EXTRACT = {"language": "English", "code_guesses": ["1F40"], "icd10_codes": [],
            "diagnoses": [{"term": "Plasmodium falciparum malaria", "search_terms": ["falciparum malaria"], "details": "uncomplicated"}]}
 
 
@@ -116,6 +116,23 @@ class AnthropicModelFallbackTest(unittest.TestCase):
         self.assertEqual(out, {"codes": ["1F40.Z"]})
         self.assertEqual(seen, [("claude-haiku-5-5", True), ("claude-haiku-4-5", False)])
         self.assertEqual(llm.model, "claude-haiku-4-5")
+
+
+class ICD10MapTest(unittest.TestCase):
+    def test_lookup_normalises_and_falls_back_to_three_characters(self):
+        from coder.llm_coder import load_icd10_map, map_icd10
+        table = load_icd10_map()
+        self.assertEqual(map_icd10(table, "B50.9"), ["1F40.Z"])
+        self.assertEqual(map_icd10(table, "b509"), ["1F40.Z"])
+        self.assertEqual(map_icd10(table, "E11.9"), ["5A11"])
+        self.assertEqual(map_icd10(table, "not a code"), [])
+
+    def test_icd10_codes_reach_the_shortlist_without_icd11_guesses(self):
+        extract = {"language": "English", "code_guesses": [], "icd10_codes": ["B88.1"],
+                   "diagnoses": [{"term": "x", "search_terms": [], "details": "none"}]}
+        coder = LLMCoder(OFFLINE, Router([Stub(extract, {"codes": []})], budget_usd=1.0))
+        self.assertIn("1G05", coder.candidates("jiggers on both feet", extract))
+        self.assertEqual(coder.predict("jiggers on both feet")[0], "1G05")
 
 
 if __name__ == "__main__":

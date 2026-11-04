@@ -8,6 +8,7 @@ Return:
   - term: the diagnosis in standard English clinical wording, as ICD-11 would title it,
   - search_terms: 2-5 English synonyms or ICD-style phrasings (expand abbreviations and local or lay terms),
   - details: anything that decides a more specific code: organism, site, laterality, severity, acuity, stage, complications, pregnancy, age group, cause. Write "none" if the note gives none.
+- icd10_codes: the WHO ICD-10 codes you would assign for these diagnoses, as specific as the note allows, main diagnosis first (up to 4).
 - code_guesses: up to 5 ICD-11 MMS codes you think fit, most likely first."""
 
 EXTRACT_SCHEMA = {
@@ -27,9 +28,10 @@ EXTRACT_SCHEMA = {
                 "additionalProperties": False,
             },
         },
+        "icd10_codes": {"type": "array", "items": {"type": "string"}},
         "code_guesses": {"type": "array", "items": {"type": "string"}},
     },
-    "required": ["language", "diagnoses", "code_guesses"],
+    "required": ["language", "diagnoses", "icd10_codes", "code_guesses"],
     "additionalProperties": False,
 }
 

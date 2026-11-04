@@ -97,3 +97,11 @@ Newest last. Each entry is committed with the work it describes; "Commit" names 
 - **Options:** Wait for Docker on the laptop; the online API (needs an account).
 - **Evidence:** Pending first run.
 - **Revisit:** Which fields earn a place in the prompt once measured.
+
+## 13. Ask for ICD-10, convert with WHO's official table
+- **When:** 2026-11-05 01:18 IST
+- **Commit:** Map the model's ICD-10 codes to ICD-11 with WHO's mapping table
+- **Decision:** Models have seen far more ICD-10 than ICD-11 coding. The extract step now also returns ICD-10 codes, and WHO's 10-to-11 mapping table (public `mapping.zip` in the 2026-01 release files, same release as the scored MMS) converts them; the targets and all leaves under their stems go to the front of the shortlist, and they are the fallback answer if the choose step fails. Lookup tolerates `B509` and falls back to the 3-character code (WHO's table has `E11` but not `E11.9`).
+- **Options:** Trust the model's ICD-11 guesses alone; the WHO online search API at run time (not reachable from the graders' sandbox).
+- **Evidence:** 11,174 ICD-10 codes map to valid 2026-01 MMS categories. Spot check of the standard ICD-10 code for 17 dev diagnoses: 13 convert straight to the gold code (B50.9 -> 1F40.Z, A01.0 -> 1A07.Z, J06.9 -> CA07.0, N39.0 -> GC08.Z, B88.1 -> 1G05, B65.0 -> 1F86.0, O14.1 -> JA24.1, O24.4 -> JA63.2, E11 -> 5A11, I50.0 -> BD10, K29.7 -> DA42.Z, K21.9 -> DA22.Z, M17.9 -> FA01.Z). This uses my own ICD-10 codes, not the model's; the real test is the model's.
+- **Revisit:** Measure how often the model's ICD-10 code is right, and whether the table's choice should outrank the choose step when they disagree.

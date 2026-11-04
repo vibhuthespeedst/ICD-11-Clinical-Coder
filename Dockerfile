@@ -4,5 +4,5 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY coder ./coder
-COPY data/mms-2026-01.json ./data/mms-2026-01.json
+COPY data ./data
 ENTRYPOINT ["python", "-m", "coder"]

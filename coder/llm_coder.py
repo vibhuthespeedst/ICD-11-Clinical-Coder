@@ -1,12 +1,29 @@
+import json
 import os
 import re
 import sys
 import threading
 
 from . import prompts
+from .mms import DATA
 from .text import weighted_query, tokens
 
 CODE_SHAPE = re.compile(r"^[0-9A-Z]{4}(\.[0-9A-Z]{1,3})?$")
+ICD10_SHAPE = re.compile(r"^[A-Z][0-9]{2}(\.[0-9A-Z]{1,2})?$")
+
+
+def load_icd10_map():
+    path = DATA / "icd10-to-icd11.json"
+    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+
+
+def map_icd10(table, code):
+    c = re.sub(r"[^0-9A-Z.]", "", str(code).upper())
+    if len(c) > 3 and "." not in c:
+        c = c[:3] + "." + c[3:]
+    if not ICD10_SHAPE.match(c):
+        return []
+    return table.get(c) or table.get(c[:3]) or []
 
 
 def make_providers():
@@ -78,6 +95,7 @@ class LLMCoder:
         self.mms = offline.mms
         self.router = router
         self.max_candidates = max_candidates
+        self.icd10 = load_icd10_map()
 
     def clean_code(self, code):
         c = str(code).strip().upper().split("&")[0].split("/")[0]
@@ -98,6 +116,9 @@ class LLMCoder:
                 if c not in picked:
                     picked.append(c)
 
+        for c10 in extracted.get("icd10_codes", []):
+            for c in map_icd10(self.icd10, c10):
+                add(self.family(c))
         for g in extracted.get("code_guesses", []):
             c = self.clean_code(g)
             if c:
@@ -132,7 +153,8 @@ class LLMCoder:
             prompts.CHOOSE_SYSTEM, prompts.choose_prompt(note, extracted, self.render(cands)), prompts.CHOOSE_SCHEMA
         )
         out = []
-        raw = (chosen or {}).get("codes", []) or extracted.get("code_guesses", [])
+        mapped = [c for c10 in extracted.get("icd10_codes", []) for c in map_icd10(self.icd10, c10)]
+        raw = (chosen or {}).get("codes", []) or mapped + extracted.get("code_guesses", [])
         for code in raw:
             c = self.clean_code(code)
             if not c:
