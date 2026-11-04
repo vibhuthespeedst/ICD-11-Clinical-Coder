@@ -69,5 +69,25 @@ class EndToEndTest(unittest.TestCase):
         self.assertEqual(len(api.requests), 128)
 
 
+    def test_openai_steps_down_when_json_schema_is_rejected(self):
+        api = FakeAPI(reject_schema=True)
+        try:
+            r, preds = self.run_cli({"OPENAI_API_KEY": "fake-key", "OPENAI_BASE_URL": api.url + "/v1"})
+        finally:
+            api.close()
+        self.check(r, preds)
+        posts = [q for q in api.requests if q["path"].endswith("/chat/completions")]
+        self.assertEqual(posts[-1]["body"]["response_format"]["type"], "json_object")
+
+    def test_openai_picks_the_newest_mini_model_it_has(self):
+        api = FakeAPI(models=("gpt-4o", "gpt-6-mini", "gpt-5.5-mini"))
+        try:
+            r, preds = self.run_cli({"OPENAI_API_KEY": "fake-key", "OPENAI_BASE_URL": api.url + "/v1"})
+        finally:
+            api.close()
+        self.check(r, preds)
+        self.assertIn("openai:gpt-6-mini", r.stderr)
+
+
 if __name__ == "__main__":
     unittest.main()

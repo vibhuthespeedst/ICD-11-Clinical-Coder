@@ -16,9 +16,11 @@ class FakeAPI:
     """Local stand-in for the Anthropic and OpenAI HTTP APIs: answers the extract step with a fixed
     diagnosis and the choose step with the first three candidates it was shown."""
 
-    def __init__(self, fail_first=0):
+    def __init__(self, fail_first=0, reject_schema=False, models=("gpt-5.1-mini",)):
         self.requests = []
         self.fail_first = fail_first
+        self.reject_schema = reject_schema
+        self.models = list(models)
         self.lock = threading.Lock()
         api = self
 
@@ -37,7 +39,7 @@ class FakeAPI:
                 self.wfile.write(body)
 
             def do_GET(self):
-                self.send(200, {"object": "list", "data": [{"id": "gpt-5.1-mini", "object": "model", "created": 0, "owned_by": "fake"}]})
+                self.send(200, {"object": "list", "data": [{"id": m, "object": "model", "created": 0, "owned_by": "fake"} for m in api.models]})
 
             def do_POST(self):
                 body = json.loads(self.rfile.read(int(self.headers["content-length"])))
@@ -57,8 +59,12 @@ class FakeAPI:
                         "usage": {"input_tokens": 100, "output_tokens": 20},
                     })
                 elif self.path.endswith("/chat/completions"):
-                    schema = body["response_format"]["json_schema"]["schema"]
-                    out = api.answer(schema, body["messages"][-1]["content"])
+                    fmt = body.get("response_format", {}).get("type")
+                    if api.reject_schema and fmt == "json_schema":
+                        self.send(400, {"error": {"type": "invalid_request_error", "message": "json_schema not supported"}})
+                        return
+                    extract = "icd10_codes" in body["messages"][0]["content"]
+                    out = api.answer({"properties": {"icd10_codes": {}} if extract else {}}, body["messages"][-1]["content"])
                     self.send(200, {
                         "id": "chatcmpl-fake", "object": "chat.completion", "created": 0, "model": body["model"],
                         "choices": [{"index": 0, "finish_reason": "stop", "message": {"role": "assistant", "content": json.dumps(out)}}],
