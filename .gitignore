@@ -6,4 +6,7 @@ out/*
 in/*
 !in/.gitkeep
 .env
+.env.*
+!.env.example
+*.key
 work/

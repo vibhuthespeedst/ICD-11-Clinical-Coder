@@ -17,3 +17,11 @@ Newest last. Each entry is committed with the work it describes; "Commit" names 
 - **Options:** Drop chapter 26 entirely; leave scores alone.
 - **Evidence:** "Thrush disorder (TM1)" and "Dysentery disorder (TM1)" beat the real codes, and .Y siblings beat .Z. SCORE 35.4 -> 41.7 (top1 0.400 -> 0.517). Kept chapter 26 reachable since a hidden note could still be coded there.
 - **Revisit:** Learn these priors from more labelled notes than 60.
+
+## 3. Keys stay out of the repo, the image and the logs
+- **When:** 2026-11-05 00:33 IST
+- **Commit:** Keep API keys out of the repo and the image
+- **Decision:** Keys come only from the environment. `.env` is git-ignored and docker-ignored, `.env.example` has empty values, and a pre-commit hook (`scripts/pre-commit`, copy to `.git/hooks`) refuses staged text shaped like an OpenAI or Anthropic key. The deliverable is `git bundle --all`, so one committed key would ship with every ref.
+- **Options:** Rely on .gitignore alone; a secrets scanner such as gitleaks. The hook is ten lines and needs nothing installed.
+- **Evidence:** Hook tested with a fake `sk-ant-...` string: commit refused, HEAD unchanged.
+- **Revisit:** Nothing; this is cheap insurance.
