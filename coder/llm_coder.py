@@ -27,33 +27,48 @@ def make_providers():
 
 
 class Router:
-    """Tries providers in order; drops one for good on an auth or model error."""
+    """Tries providers in order. A provider is dropped for good on an auth or model error,
+    or after max_failures errors in a row (a blocked proxy should not cost every note its retries)."""
 
-    def __init__(self, providers, budget_usd):
+    def __init__(self, providers, budget_usd, max_failures=10):
         self.providers = list(providers)
         self.budget = budget_usd
+        self.max_failures = max_failures
         self.spent = 0.0
+        self.failures = {}
         self.lock = threading.Lock()
 
     @property
     def alive(self):
         return bool(self.providers) and self.spent < self.budget
 
+    def _drop(self, p, why):
+        with self.lock:
+            if p in self.providers:
+                self.providers.remove(p)
+                print(f"{p.name}: disabled ({why})", file=sys.stderr)
+
     def complete(self, system, user, schema):
+        last = None
         for p in list(self.providers):
             try:
                 out, cost = p.complete(system, user, schema)
             except Exception as e:
                 if p.is_fatal(e):
-                    print(f"{p.name}: disabled after {type(e).__name__}", file=sys.stderr)
-                    with self.lock:
-                        if p in self.providers:
-                            self.providers.remove(p)
+                    self._drop(p, type(e).__name__)
                     continue
-                raise
+                last = e
+                with self.lock:
+                    n = self.failures[p.name] = self.failures.get(p.name, 0) + 1
+                if n >= self.max_failures:
+                    self._drop(p, f"{n} errors in a row, last {type(e).__name__}")
+                continue
             with self.lock:
                 self.spent += cost
+                self.failures[p.name] = 0
             return out
+        if last is not None:
+            raise last
         return None
 
 

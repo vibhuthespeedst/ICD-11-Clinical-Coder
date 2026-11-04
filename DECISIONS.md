@@ -73,3 +73,11 @@ Newest last. Each entry is committed with the work it describes; "Commit" names 
 - **Options:** Hold out part of the 60 dev notes (too few, and same narrow chapters); hand-write notes (slow, and I am not a clinician).
 - **Evidence:** 150 samples cover 23 chapters, 30 are .Z (dev: 14 of 61). Not generated yet; needs a key.
 - **Revisit:** Gold here is only as good as the writer; read a sample by hand and drop notes that don't support their code.
+
+## 10. Fail fast when the model API is unreachable; fall back across Claude models
+- **When:** 2026-11-05 01:15 IST
+- **Commit:** Drop an unreachable provider after 10 errors; fall back across Claude models
+- **Decision:** The brief warns that a client that ignores `HTTPS_PROXY` fails every call. Each provider is now dropped after 10 errors in a row (reset on any success), and a temporary error on one provider falls through to the next for that call. If the key cannot use Claude Haiku 5.5 (404), the Anthropic client moves to Haiku 4.5, then Sonnet 5.5, still under the spend cap.
+- **Options:** Rely on SDK retries only (every note pays the full retry chain); give up on Anthropic at the first 404 (loses the model path if the key is restricted).
+- **Evidence:** Fake key with the API pointed at a dead port: provider dropped after 10 errors, all 60 notes kept their offline codes, whole run 27 s, SCORE 41.7. Unit tests cover fall-through, the drop, and the 404 model fallback (Haiku 4.5 gets no `effort`, which it rejects).
+- **Revisit:** The 10-error threshold against real rate-limit behaviour on the graders' keys.
