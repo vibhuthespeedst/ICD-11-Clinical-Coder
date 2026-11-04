@@ -25,3 +25,19 @@ Newest last. Each entry is committed with the work it describes; "Commit" names 
 - **Options:** Rely on .gitignore alone; a secrets scanner such as gitleaks. The hook is ten lines and needs nothing installed.
 - **Evidence:** Hook tested with a fake `sk-ant-...` string: commit refused, HEAD unchanged.
 - **Revisit:** Nothing; this is cheap insurance.
+
+## 4. Model path: extract, shortlist, choose
+- **When:** 2026-11-05 00:33 IST
+- **Commit:** Model path: extract diagnoses, shortlist codes, choose
+- **Decision:** Two calls per note. (1) The model reads the note in any language and returns English diagnosis terms, the details that decide specificity, and its own code guesses. (2) BM25 searches the MMS with those terms; every hit is expanded to all leaves under its 4-character stem so the specific child is always on the list; the model then picks up to 3 codes from that list only. Output codes are checked against the MMS; a parent is pushed to its .Z child; empty slots are filled from the offline coder.
+- **Options:** One call with the model coding from memory (models know ICD-10 far better than ICD-11 codes, so invalid or outdated codes are likely); embeddings over titles (needs an embedding model at run time or in the image); a single call with a fixed BM25 shortlist from the raw note (gold was on that list for only 44/60 dev notes).
+- **Evidence:** Without the model, the shortlist from note text alone contains gold for 44/60 notes, median 15 codes. Stub tests cover: invalid codes and an injected "IGNORE PREVIOUS" string dropped, auth errors disabling a provider, the spend cap stopping calls.
+- **Revisit:** Measure with a real key; try one call instead of two if cost or time is tight.
+
+## 5. Run-time guards for the 60-minute and $6 caps
+- **When:** 2026-11-05 00:33 IST
+- **Commit:** Model path: extract diagnoses, shortlist codes, choose
+- **Decision:** Write offline predictions for every note first, then overwrite each note's line as its model answer arrives (atomic rewrite of the whole file). 12 worker threads, stop starting notes after 50 minutes (`CODER_TIME_BUDGET_S`) or an estimated $5.50 (`CODER_BUDGET_USD`). Anthropic first if its key is set, OpenAI second; an auth, permission or not-found error drops that provider for the rest of the run.
+- **Options:** Append lines as they finish (score.py keeps the first line per id, so a later better answer could never replace an earlier fallback); one provider only (the graders may supply only one of the two keys).
+- **Evidence:** No-key run still scores 41.7/75 and every id is written.
+- **Revisit:** Worker count once rate limits on the graders' keys are known; OpenAI model choice (picked from a preference list via the models endpoint, untested).
