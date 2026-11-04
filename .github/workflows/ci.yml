@@ -13,7 +13,7 @@ jobs:
         with:
           python-version: "3.13"
       - run: pip install -r requirements.txt
-      - run: python -m unittest discover -s tests -v
+      - run: python -m unittest discover -s tests -t . -v
 
   graders-command:
     runs-on: ubuntu-latest
@@ -34,3 +34,38 @@ jobs:
             -v "$PWD/in:/in" -v "$PWD/out:/out" icd11-coder /in/notes.jsonl /out/isolated.jsonl
           python3 score.py --gold data/dev_notes.jsonl --pred out/isolated.jsonl --mms data/mms-2026-01.json | tee isolated.txt
           grep -q "missing predictions 0  invalid codes 0" isolated.txt
+
+  graders-sandbox:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build from a clean checkout
+        run: docker compose build
+      - name: Compose passes the proxy and keys through to the container
+        run: |
+          HTTPS_PROXY=http://proxy.example:3128 ANTHROPIC_API_KEY=k1 OPENAI_API_KEY=k2 \
+            docker compose run --rm --entrypoint env coder > env.txt
+          grep -q '^HTTPS_PROXY=http://proxy.example:3128$' env.txt
+          grep -q '^ANTHROPIC_API_KEY=k1$' env.txt
+          grep -q '^OPENAI_API_KEY=k2$' env.txt
+      - name: Build a sandbox with no internet and a proxy that allows only the two model APIs
+        run: |
+          docker network create --internal sandbox
+          docker run -d --name proxy -v "$PWD/tests:/t:ro" python:3.13-slim python -u /t/connect_proxy.py 8888
+          docker network connect sandbox proxy
+          sleep 3
+      - name: Direct internet is blocked inside the sandbox
+        run: |
+          ! docker run --rm --network sandbox --entrypoint python icd11-coder -c \
+            "import urllib.request; urllib.request.urlopen('https://example.com', timeout=10)"
+      - name: Both SDKs reach their APIs through HTTPS_PROXY, and every note still gets valid codes
+        run: |
+          cp data/dev_notes.jsonl in/notes.jsonl
+          time docker run --rm --network sandbox -e HTTPS_PROXY=http://proxy:8888 \
+            -e ANTHROPIC_API_KEY=not-a-real-key -e OPENAI_API_KEY=not-a-real-key \
+            -v "$PWD/in:/in" -v "$PWD/out:/out" icd11-coder /in/notes.jsonl /out/sandbox.jsonl
+          docker logs proxy | sort | uniq -c | tee proxy.txt
+          grep -q "CONNECT api.anthropic.com:443 allowed" proxy.txt
+          grep -q "CONNECT api.openai.com:443 allowed" proxy.txt
+          python3 score.py --gold data/dev_notes.jsonl --pred out/sandbox.jsonl --mms data/mms-2026-01.json | tee sandbox.txt
+          grep -q "missing predictions 0  invalid codes 0" sandbox.txt

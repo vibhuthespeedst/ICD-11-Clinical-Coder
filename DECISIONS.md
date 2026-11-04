@@ -129,3 +129,11 @@ Newest last. Each entry is committed with the work it describes; "Commit" names 
 - **Options:** No cache (the free Gemini tier has daily request limits and one dev run is 120 calls).
 - **Evidence:** Unit test: second identical request served from disk at cost 0, a different note still calls the model. CI on fcff27f: graders' command 53.3 in 8.7 s; --network none 53.3 in 22.6 s.
 - **Revisit:** Turn it off when measuring run-to-run variance.
+
+## 17. Test the success path and the graders' network without a key
+- **When:** 2026-11-05 02:12 IST
+- **Commit:** End-to-end tests against a fake API; CI sandbox with an allowlist proxy
+- **Decision:** Two checks that need no key. (1) `tests/fake_api.py` is a local server that speaks the Anthropic Messages and OpenAI Chat Completions protocols; `tests/test_end_to_end.py` runs the real CLI and the real SDKs against it. (2) A CI job builds the graders' network: an `--internal` Docker network with no internet, plus `tests/connect_proxy.py`, a proxy that only tunnels to api.anthropic.com and api.openai.com and logs every CONNECT. It checks that direct internet fails inside the sandbox, that both SDKs reach their APIs through `HTTPS_PROXY` (fake keys, so the APIs answer 401), that every note still gets valid codes, and that compose passes the proxy and keys into the container.
+- **Options:** Wait for a real key (proves quality, but not proxy handling); trust the brief's note that the SDKs honour `HTTPS_PROXY`.
+- **Evidence:** Locally, 13 tests pass. Both SDK paths: 60/60 notes with valid codes, exactly 120 requests, key and model on every request, JSON-schema output requested. First 8 requests answered 429: the SDK retried them (128 requests) and all 60 notes still came back from the model path. My first header check assumed `x-api-key`; anthropic 2.4.0 sends `Authorization: Bearer`, so the check now accepts either. Proxy smoke test: api.anthropic.com:443 tunnelled, example.com:443 refused.
+- **Revisit:** Point the same sandbox at a real key once one exists.
