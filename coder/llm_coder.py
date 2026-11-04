@@ -104,7 +104,8 @@ class LLMCoder:
         for c in codes:
             p = self.mms.parent.get(c)
             leaf = "" if self.mms.is_leaf(c) else " [has subcodes]"
-            lines.append(f"{c} | {self.mms.title(c)}{leaf} | {self.mms.title(p) if p else '-'}")
+            also = "; ".join(self.offline.terms.get(c, [])[:3])
+            lines.append(f"{c} | {self.mms.title(c)}{leaf} | {self.mms.title(p) if p else '-'}" + (f" | also: {also}" if also else ""))
         return "\n".join(lines)
 
     def predict(self, note):

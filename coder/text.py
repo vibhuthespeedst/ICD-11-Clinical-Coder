@@ -1,6 +1,6 @@
 import re
 
-TOKEN = re.compile(r"[a-z0-9]+")
+TOKEN = re.compile(r"[^\W_]+")
 
 STOP = set("""
 a an the and or of in on at to for with without by from as is are was were be been it its this that

@@ -57,3 +57,19 @@ Newest last. Each entry is committed with the work it describes; "Commit" names 
 - **Options:** Pay for Anthropic credit from the start; free OpenRouter models (about 50 requests a day, one dev run needs 120).
 - **Evidence:** Client resolves the Gemini base URL from the environment alone (checked with a dummy key, no network). Pre-commit hook now also refuses Google-style `AIza...` keys, tested with a fake one.
 - **Revisit:** Gemini scores are not what the graders will see; run the dev set once on Claude Haiku 5.5 before submitting.
+
+## 8. WHO index terms from the offline WHO container, not the online API
+- **When:** 2026-11-05 00:58 IST
+- **Commit:** Use WHO index terms and inclusions when downloaded; test-note generator
+- **Decision:** The brief hints that WHO publishes much more than titles. Each MMS entity in the ICD-API carries index terms (synonyms, lay and local names) and inclusions. `scripts/fetch_who.py` pulls them for all 18,375 codes from WHO's free `whoicd/icd-api` Docker container (licence accepted with one flag, no account), or from the online API with a client id and secret. They feed the BM25 index and are shown next to each candidate in the model's shortlist ("also: ..."). The tokenizer is now Unicode-aware so translated titles can be added the same way.
+- **Options:** Online API (needs registration; 18k authenticated calls); scraping the ICD browser (not acceptable); asking the model to write synonyms (slow, and it invents terms).
+- **Evidence:** With a one-entry stand-in file, "chigoe" codes to 1G05 Tungiasis and the shortlist line shows the synonyms. Dev score unchanged at 41.7 with no WHO data present. Real download waits for Docker on this laptop.
+- **Revisit:** Index term weight in BM25 once the real file is in; which translations help the generalisation slice.
+
+## 9. Synthetic notes to test beyond the 60 dev notes
+- **When:** 2026-11-05 00:58 IST
+- **Commit:** Use WHO index terms and inclusions when downloaded; test-note generator
+- **Decision:** `scripts/make_synth.py` samples one leaf per note evenly across chapters 01-24 (skipping 23 external causes and .Y codes), a style and a language (about half English; French, Swahili, Spanish, Portuguese, Arabic, Hindi, Amharic), and has the model write a note that fits exactly that code: with the deciding details for a specific code, without them for a .Z code. Written as slice B so score.py reports it apart from the dev set.
+- **Options:** Hold out part of the 60 dev notes (too few, and same narrow chapters); hand-write notes (slow, and I am not a clinician).
+- **Evidence:** 150 samples cover 23 chapters, 30 are .Z (dev: 14 of 61). Not generated yet; needs a key.
+- **Revisit:** Gold here is only as good as the writer; read a sample by hand and drop notes that don't support their code.

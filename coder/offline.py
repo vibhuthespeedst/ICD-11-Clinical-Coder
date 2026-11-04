@@ -1,6 +1,7 @@
 from .mms import MMS
 from .search import Index
 from .text import weighted_query
+from .who import load_terms
 
 FALLBACK = ["CA07.0", "MG26", "QA0Z"]
 
@@ -8,7 +9,8 @@ FALLBACK = ["CA07.0", "MG26", "QA0Z"]
 class OfflineCoder:
     def __init__(self, mms=None, extra_terms=None):
         self.mms = mms or MMS()
-        self.index = Index(self.mms, extra_terms)
+        self.terms = load_terms() if extra_terms is None else extra_terms
+        self.index = Index(self.mms, self.terms)
 
     def to_leaf(self, code, scores):
         if self.mms.is_leaf(code):
