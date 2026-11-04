@@ -22,9 +22,9 @@ from coder.mms import MMS  # noqa: E402
 
 LANGS = ["English"] * 6 + ["French", "Swahili", "Spanish", "Portuguese", "Arabic", "Hindi", "Amharic"]
 STYLES = {
-    "typed_consult": "a typed consult note with S/O/A/P or Hx/Ex/Imp/Plan sections and clinical abbreviations",
-    "short_consult": "a terse 2-4 line note with heavy abbreviations, as a busy clinician types between patients",
-    "ambient_transcript": "a transcript of the consultation from an ambient scribe, 'Doctor:' and 'Patient:' lines, where the doctor states the diagnosis in plain words",
+    "typed_consult": "a typed consult note of 100-200 words with S/O/A/P or Hx/Ex/Imp/Plan sections and clinical abbreviations",
+    "short_consult": "a terse note of 2-4 lines (30-70 words) with heavy abbreviations, as a busy clinician types between patients",
+    "ambient_transcript": "a transcript of 120-250 words from an ambient scribe, 'Doctor:' and 'Patient:' lines, where the doctor states the diagnosis in plain words",
 }
 SKIP_CHAPTERS = {"23", "25", "26"}
 
@@ -49,7 +49,7 @@ def prompt(mms, code, lang, style):
     else:
         rule = "Include the clinical details that make this the right category rather than these neighbours:\n" + sib
     return (
-        f"Write {STYLES[style]}, in {lang}, 80-250 words.\n"
+        f"Write {STYLES[style]}, in {lang}.\n"
         f"The clinician's diagnosis must fit exactly this ICD-11 category: {mms.title(code)}"
         + (f" (a kind of: {mms.title(parent)})" if parent else "")
         + f".\n{rule}"
