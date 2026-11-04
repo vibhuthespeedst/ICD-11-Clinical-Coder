@@ -1,0 +1,21 @@
+services:
+  coder:
+    build: .
+    environment:
+      - ANTHROPIC_API_KEY
+      - OPENAI_API_KEY
+      - HTTPS_PROXY
+      - HTTP_PROXY
+      - NO_PROXY
+      - https_proxy
+      - http_proxy
+      - no_proxy
+      - CODER_ANTHROPIC_MODEL
+      - CODER_OPENAI_MODEL
+      - CODER_EFFORT
+      - CODER_WORKERS
+      - CODER_TIME_BUDGET_S
+      - CODER_BUDGET_USD
+    volumes:
+      - ./in:/in
+      - ./out:/out

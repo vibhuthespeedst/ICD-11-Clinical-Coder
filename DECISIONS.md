@@ -41,3 +41,11 @@ Newest last. Each entry is committed with the work it describes; "Commit" names 
 - **Options:** Append lines as they finish (score.py keeps the first line per id, so a later better answer could never replace an earlier fallback); one provider only (the graders may supply only one of the two keys).
 - **Evidence:** No-key run still scores 41.7/75 and every id is written.
 - **Revisit:** Worker count once rate limits on the graders' keys are known; OpenAI model choice (picked from a preference list via the models endpoint, untested).
+
+## 6. Docker: slim Python image, data baked in, keys only at run time
+- **When:** 2026-11-05 00:33 IST
+- **Commit:** Docker image and compose service (not built locally yet)
+- **Decision:** `python:3.13-slim` with two pinned SDKs; the MMS file is copied into the image so the run needs no network except the model APIs. Compose passes the keys and proxy variables through from the caller's environment and mounts `./in` and `./out`.
+- **Options:** Bake an index file into the image (index builds in about 1.5 s at start, not worth it yet).
+- **Evidence:** None yet: Docker is not installed on this laptop, so the image is unbuilt. Must build and run from a fresh clone before submitting.
+- **Revisit:** How the graders mount /in and /out (asked by email).
