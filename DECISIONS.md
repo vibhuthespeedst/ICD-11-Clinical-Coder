@@ -49,3 +49,11 @@ Newest last. Each entry is committed with the work it describes; "Commit" names 
 - **Options:** Bake an index file into the image (index builds in about 1.5 s at start, not worth it yet).
 - **Evidence:** None yet: Docker is not installed on this laptop, so the image is unbuilt. Must build and run from a fresh clone before submitting.
 - **Revisit:** How the graders mount /in and /out (asked by email).
+
+## 7. Develop on a free Gemini key, confirm on Claude before submitting
+- **When:** 2026-11-05 00:48 IST
+- **Commit:** Develop against a free Gemini key through the OpenAI client
+- **Decision:** For day-to-day dev runs, point the OpenAI client at Gemini's OpenAI-compatible endpoint with `OPENAI_BASE_URL` and `CODER_OPENAI_MODEL` in my local `.env`. No code change; compose does not pass `OPENAI_BASE_URL`, so the graded container always talks to api.openai.com or api.anthropic.com.
+- **Options:** Pay for Anthropic credit from the start; free OpenRouter models (about 50 requests a day, one dev run needs 120).
+- **Evidence:** Client resolves the Gemini base URL from the environment alone (checked with a dummy key, no network). Pre-commit hook now also refuses Google-style `AIza...` keys, tested with a fake one.
+- **Revisit:** Gemini scores are not what the graders will see; run the dev set once on Claude Haiku 5.5 before submitting.

@@ -1,6 +1,6 @@
 #!/bin/sh
 # Blocks commits that contain something shaped like an API key.
-if git diff --cached -U0 | grep -E '^\+' | grep -qE 'sk-ant-[A-Za-z0-9_-]{10,}|sk-proj-[A-Za-z0-9_-]{10,}|sk-[A-Za-z0-9]{32,}'; then
+if git diff --cached -U0 | grep -E '^\+' | grep -qE 'sk-ant-[A-Za-z0-9_-]{10,}|sk-proj-[A-Za-z0-9_-]{10,}|sk-[A-Za-z0-9]{32,}|AIza[0-9A-Za-z_-]{30,}'; then
   echo "pre-commit: staged changes contain what looks like an API key. Commit refused." >&2
   exit 1
 fi
