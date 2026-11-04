@@ -242,3 +242,11 @@ Newest last. Each entry is committed with the work it describes; "Commit" names 
 - **Options:** Tighten the specificity rule now, from the 4 misses (fits the dev set by construction).
 - **Evidence:** gemini-3.5-flash-lite on the 60 dev notes: 59/60 answered by the model path (one per-minute 429 kept its offline codes), 385 s. SCORE 71.7/75 (top1 56/60, top3 60/60), against 53.3 offline. All 4 top-1 misses are specificity, never the wrong disease, and gold sat in slot 2 or 3 every time: FA01.0 for "OA knees" (gold FA01.Z), DA22.0 non-erosive for "GORD, no alarm features" (gold DA22.Z), 5A00.2Y for "primary hypothyroidism, adult onset" (gold 5A00.2Z), BA00.Z for "HTN stage 2" (gold BA00.0, combined). Three are too specific; none of the 61 dev gold codes is a .Y. Caveats: the design was developed on these notes; +/- 3 points of noise; Gemini lite, not the graders' models.
 - **Revisit:** A rule that a specific child needs its defining detail stated, else .Z, and .Y almost never; test it on the synthetic notes first.
+
+## 31. Pin the whole dependency tree and the base image
+- **When:** 2026-11-05 05:27 IST
+- **Commit:** Pin every package and the base image digest; install with --no-deps and pip check
+- **Decision:** `requirements.txt` now pins all 17 packages (the two SDKs and 15 dependencies), the image installs them with `--no-deps` and runs `pip check`, and the base image is pinned to the multi-platform index digest of `python:3.13-slim`. A missing dependency now fails the build in CI instead of pulling an unpinned version at grading.
+- **Options:** Hash pinning (`--require-hashes`): pydantic-core and jiter ship different wheels per CPU, and hashes taken on this x86 laptop could fail on an ARM grading box, which means rejection. A plain tag (`python:3.13-slim`) can change under me.
+- **Evidence:** The digest is an OCI index covering linux/amd64 and linux/arm64 among others. A fresh venv built from the file with `--no-deps`: `pip check` clean, both SDKs import. My first attempt wrote the Dockerfile change before the requirements file (the editor refused the write), which would have failed the build; caught before commit.
+- **Revisit:** Nothing.
