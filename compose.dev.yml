@@ -1,0 +1,6 @@
+# Local testing only, never auto-loaded: docker compose -f docker-compose.yml -f compose.dev.yml run coder ...
+services:
+  coder:
+    volumes:
+      - ./in:/in:ro
+      - ./out:/out

@@ -17,6 +17,3 @@ services:
       - CODER_WORKERS
       - CODER_TIME_BUDGET_S
       - CODER_BUDGET_USD
-    volumes:
-      - ./in:/in
-      - ./out:/out

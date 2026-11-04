@@ -21,17 +21,25 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build from a clean checkout
         run: docker compose build
-      - name: Run the graders' exact command with no keys
+      - name: The default service declares no mounts of its own
+        run: |
+          docker compose config coder > config.txt
+          ! grep -qE '(source|target): .*/(in|out)$' config.txt
+      - name: Run the graders' exact command with no keys, read-only /in and writable /out supplied from outside
         run: |
           cp data/dev_notes.jsonl in/notes.jsonl
-          time docker compose run coder /in/notes.jsonl /out/predictions.jsonl
+          time docker compose run --rm -v "$PWD/in:/in:ro" -v "$PWD/out:/out" coder /in/notes.jsonl /out/predictions.jsonl
           python3 score.py --gold data/dev_notes.jsonl --pred out/predictions.jsonl --mms data/mms-2026-01.json | tee score.txt
           grep -q "missing predictions 0  invalid codes 0" score.txt
+      - name: Local dev override still works
+        run: |
+          docker compose -f docker-compose.yml -f compose.dev.yml run --rm coder /in/notes.jsonl /out/dev.jsonl
+          python3 score.py --gold data/dev_notes.jsonl --pred out/dev.jsonl --mms data/mms-2026-01.json | tail -1
       - name: Run with networking off and keys that cannot reach anything
         run: |
           time docker run --rm --network none \
             -e ANTHROPIC_API_KEY=not-a-real-key -e OPENAI_API_KEY=not-a-real-key \
-            -v "$PWD/in:/in" -v "$PWD/out:/out" icd11-coder /in/notes.jsonl /out/isolated.jsonl
+            -v "$PWD/in:/in:ro" -v "$PWD/out:/out" icd11-coder /in/notes.jsonl /out/isolated.jsonl
           python3 score.py --gold data/dev_notes.jsonl --pred out/isolated.jsonl --mms data/mms-2026-01.json | tee isolated.txt
           grep -q "missing predictions 0  invalid codes 0" isolated.txt
 
@@ -63,7 +71,7 @@ jobs:
           cp data/dev_notes.jsonl in/notes.jsonl
           time docker run --rm --network sandbox -e HTTPS_PROXY=http://proxy:8888 \
             -e ANTHROPIC_API_KEY=not-a-real-key -e OPENAI_API_KEY=not-a-real-key \
-            -v "$PWD/in:/in" -v "$PWD/out:/out" icd11-coder /in/notes.jsonl /out/sandbox.jsonl
+            -v "$PWD/in:/in:ro" -v "$PWD/out:/out" icd11-coder /in/notes.jsonl /out/sandbox.jsonl
           docker logs proxy | sort | uniq -c | tee proxy.txt
           grep -q "CONNECT api.anthropic.com:443 allowed" proxy.txt
           grep -q "CONNECT api.openai.com:443 allowed" proxy.txt

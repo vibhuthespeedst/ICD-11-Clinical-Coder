@@ -154,3 +154,11 @@ Newest last. Each entry is committed with the work it describes; "Commit" names 
 - **Options:** Wait for the real key to learn timings (too late to change the design if they are bad).
 - **Evidence:** New end-to-end test: fake API at 1 s per call, 4 s budget, 4 workers: the run stops starting notes, all 60 notes keep valid codes, about 10 s in total. One-off run of 600 notes (dev x10) at 1 s per call: 600/600 answered by the model path in 120 s, about 10.5 calls/s with 12 workers, so even 10 s per real call means about 17 minutes. `git bundle create --all`: 5.6 MB, `git bundle verify` okay, clone has all commits, no .env, one author, tests pass and the coder scores 53.3 from the clone.
 - **Revisit:** Real latency and rate limits on the graders' keys.
+
+## 20. Grading mounts belong to the graders: dev mounts moved to a local-only file
+- **When:** 2026-11-05 03:45 IST
+- **Commit:** Move dev mounts to a local-only compose file; CI mounts /in read-only
+- **Decision:** Sugen answered by email: at grading they supply `/in/notes.jsonl` read-only and a writable `/out`, and dev mounts must not sit in the default `coder` service. The default service now declares no volumes. `./in` and `./out` live in `compose.dev.yml`, used only with `-f docker-compose.yml -f compose.dev.yml`. I did not use `docker-compose.override.yml`: compose loads that name automatically, so it would mount over the graders' paths; that name and `compose.override.yml` are now git-ignored so one can never be committed.
+- **Options:** `docker-compose.override.yml` (auto-loaded, wrong); keep the mounts (told not to).
+- **Evidence:** CI now checks that `docker compose config coder` has no /in or /out mount, runs the graders' command with `-v in:/in:ro -v out:/out` supplied from outside (the program writes only its output file, so a read-only /in is fine), and checks the dev override still works.
+- **Revisit:** Nothing.
