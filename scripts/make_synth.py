@@ -4,6 +4,7 @@ Usage: python scripts/make_synth.py --n 150  (needs a key in the environment)
 import argparse
 import json
 import random
+import re
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -42,12 +43,34 @@ def prompt(mms, code, lang, style):
         rule = "The note must NOT give the detail that would separate these more specific categories:\n" + sib
     else:
         rule = "Include the clinical details that make this the right category rather than these neighbours:\n" + sib
+    language = (f"Language: {lang}. Write the whole note in {lang}, including everything the doctor and patient say; "
+                f"only the 'Doctor:' and 'Patient:' labels may stay in English.\n") if lang != "English" else ""
     return (
-        f"Write {STYLES[style]}, in {lang}.\n"
+        language
+        + f"Write {STYLES[style]}, in {lang}.\n"
         f"The clinician's diagnosis must fit exactly this ICD-11 category: {mms.title(code)}"
         + (f" (a kind of: {mms.title(parent)})" if parent else "")
         + f".\n{rule}"
     )
+
+
+ENGLISH = set("the and with for of to in is was patient doctor no not has have you your she he his her they this that "
+              "on at as are be pain fever days history plan review today".split())
+
+
+SCRIPTS = {"Arabic": r"[؀-ۿ]", "Hindi": r"[ऀ-ॿ]", "Amharic": r"[ሀ-፿]"}
+
+
+def mostly_english(text):
+    words = re.findall(r"[a-z']+", text.lower())
+    return bool(words) and sum(w in ENGLISH for w in words) / len(words) > 0.15
+
+
+def wrong_language(text, lang):
+    if lang in SCRIPTS:
+        letters = re.findall(r"[^\W\d_]", text)
+        return not letters or len(re.findall(SCRIPTS[lang], text)) / len(letters) < 0.3
+    return lang != "English" and mostly_english(text)
 
 
 def sample(mms, n, rng):
@@ -77,14 +100,24 @@ def main():
 
     def one(job):
         i, code, lang, style = job
-        try:
-            out = router.complete(SYSTEM, prompt(mms, code, lang, style), SCHEMA)
-        except Exception as e:
-            print(f"synth-{i:03d}: {type(e).__name__}", file=sys.stderr)
+        text = None
+        for attempt in range(2):
+            ask = prompt(mms, code, lang, style)
+            if attempt:
+                ask = f"Your last note was in English. Write it again entirely in {lang}; do not use English.\n" + ask
+            try:
+                out = router.complete(SYSTEM, ask, SCHEMA)
+            except Exception as e:
+                print(f"synth-{i:03d}: {type(e).__name__}", file=sys.stderr)
+                return None
+            text = (out or {}).get("text")
+            if text and not wrong_language(text, lang):
+                break
+            text = None
+        if not text:
+            print(f"synth-{i:03d}: dropped, not written in {lang}", file=sys.stderr)
             return None
-        if not out or not out.get("text"):
-            return None
-        return {"id": f"synth-{i:03d}", "text": out["text"], "gold": [code], "slice": "B", "style": style, "lang": lang}
+        return {"id": f"synth-{i:03d}", "text": text, "gold": [code], "slice": "B", "style": style, "lang": lang}
 
     Path(a.out).parent.mkdir(parents=True, exist_ok=True)
     with ThreadPoolExecutor(a.workers) as pool:
