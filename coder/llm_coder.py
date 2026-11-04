@@ -44,8 +44,7 @@ def make_providers():
 
 
 class Router:
-    """Tries providers in order. A provider is dropped for good on an auth or model error,
-    or after max_failures errors in a row (a blocked proxy should not cost every note its retries)."""
+    """Tries providers in order; drops one after an auth error or max_failures errors in a row."""
 
     def __init__(self, providers, budget_usd, max_failures=10):
         self.providers = list(providers)

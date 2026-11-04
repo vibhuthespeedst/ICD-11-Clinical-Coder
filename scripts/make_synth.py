@@ -1,11 +1,5 @@
-"""Write synthetic consult notes with known codes, to test beyond the 60 dev notes.
-
-One leaf code is sampled per note, evenly across chapters 01-24 (chapter 23 external causes and
-"other specified" .Y codes left out), and the model writes a note in a sampled style and language that
-supports exactly that code. Gold is the sampled code, so treat scores as a rough check: the writer may
-miss a detail, and a model coding notes another model wrote is easier than real notes.
-
-    sh -c 'set -a; . ./.env; set +a; .venv/Scripts/python scripts/make_synth.py --n 150'
+"""Write synthetic notes with known codes across chapters and languages (DECISIONS.md, entry 9).
+Usage: python scripts/make_synth.py --n 150  (needs a key in the environment)
 """
 import argparse
 import json

@@ -1,10 +1,5 @@
-"""Build data/icd10-to-icd11.json from WHO's mapping tables (mapping.zip in the ICD-11 2026-01 release files:
-https://icdcdn.who.int/static/releasefiles/2026-01/mapping.zip).
-
-    python -I scripts/build_icd10_map.py <folder with the extracted .txt files>
-
-Output: {"B50.9": ["1F40.Z", ...], ...}: the one-to-one target first, then any extra targets from the
-one-to-many table, keeping only codes that are categories in data/mms-2026-01.json.
+"""Build data/icd10-to-icd11.json from WHO's mapping.zip (ICD-11 2026-01 release files).
+Usage: python -I scripts/build_icd10_map.py <folder with the extracted .txt files>
 """
 import json
 import sys

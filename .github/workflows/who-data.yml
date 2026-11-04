@@ -1,7 +1,6 @@
 name: who-data
 
-# Pulls WHO index terms, inclusions, exclusions, definitions and coding notes for every MMS code
-# from WHO's own ICD-API container, one language per job. Run by hand; the JSON comes back as artifacts.
+# Run by hand: pulls WHO data per language from WHO's ICD-API container, as artifacts.
 on:
   workflow_dispatch:
 

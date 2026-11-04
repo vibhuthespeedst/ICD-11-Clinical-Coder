@@ -1,14 +1,5 @@
-"""Download WHO's index terms, inclusions and translated titles for every code in data/mms-2026-01.json.
-
-Source, either:
-  local WHO ICD-API container (no account needed):
-      docker run -d -p 8382:80 -e acceptLicense=true -e include=2026-01_en whoicd/icd-api
-      python scripts/fetch_who.py --base http://localhost:8382 --lang en
-  or the online API, with WHO_CLIENT_ID and WHO_CLIENT_SECRET in the environment:
-      python scripts/fetch_who.py --base https://id.who.int --lang en
-
-Writes data/who/mms-2026-01-<lang>.json:
-  {code: {"title", "index", "inclusion", "exclusion": [{"label", "ref"}], "definition", "codingNote"}}.
+"""Download WHO index terms, inclusions, exclusions, definitions and coding notes for every MMS code.
+Usage: python scripts/fetch_who.py --base http://localhost:8382 --lang en  (WHO's whoicd/icd-api container)
 """
 import argparse
 import json
