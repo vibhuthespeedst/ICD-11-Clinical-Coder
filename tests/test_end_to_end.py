@@ -164,6 +164,20 @@ class EndToEndTest(unittest.TestCase):
         self.assertNotIn("cannot parse", r.stderr)
         self.assertNotIn("falciparum", r.stderr)
 
+    def test_spent_quota_drops_the_provider_instead_of_retrying(self):
+        api = FakeAPI(quota_exhausted=True)
+        start = time.monotonic()
+        try:
+            r, preds = self.run_cli({"OPENAI_API_KEY": "fake-key", "OPENAI_BASE_URL": api.url + "/v1"})
+        finally:
+            api.close()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(len(preds), 60)
+        self.assertTrue(all(p["codes"] and all(c in VALID for c in p["codes"]) for p in preds))
+        self.assertIn("openai: disabled (RateLimitError)", r.stderr)
+        self.assertLess(time.monotonic() - start, 30)
+        self.assertLessEqual(len([q for q in api.requests if q["path"].endswith("/chat/completions")]), 12 * 4)
+
 
 if __name__ == "__main__":
     unittest.main()

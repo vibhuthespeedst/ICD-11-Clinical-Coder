@@ -18,9 +18,10 @@ class FakeAPI:
     diagnosis and the choose step with the first three candidates it was shown."""
 
     def __init__(self, fail_first=0, reject_schema=False, models=("gpt-5.1-mini",), delay=0.0, rate_per_sec=None,
-                 reject_anthropic_format=False, echo_error=False):
+                 reject_anthropic_format=False, echo_error=False, quota_exhausted=False):
         self.requests = []
         self.echo_error = echo_error
+        self.quota_exhausted = quota_exhausted
         self.delay = delay
         self.rate_per_sec = rate_per_sec
         self.reject_anthropic_format = reject_anthropic_format
@@ -84,6 +85,9 @@ class FakeAPI:
                         "stop_reason": "end_turn", "stop_sequence": None,
                         "usage": {"input_tokens": 100, "output_tokens": 20},
                     })
+                elif self.path.endswith("/chat/completions") and api.quota_exhausted:
+                    self.send(429, {"error": {"message": "You exceeded your current quota, please check your plan and billing details.",
+                                              "type": "insufficient_quota", "code": "insufficient_quota"}})
                 elif self.path.endswith("/chat/completions"):
                     fmt = body.get("response_format", {}).get("type")
                     if api.reject_schema and fmt == "json_schema":

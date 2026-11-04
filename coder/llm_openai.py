@@ -69,9 +69,20 @@ class OpenAILLM:
         return parse_json(choice.message.content), cost
 
     @staticmethod
+    def quota_exhausted(err):
+        """A spent budget or daily quota also comes back as 429, but waiting will not help."""
+        if not isinstance(err, openai.RateLimitError):
+            return False
+        text = (json.dumps(getattr(err, "body", None) or "") + " " + str(getattr(err, "code", None) or "")).lower()
+        return "insufficient_quota" in text or "perday" in text or "per day" in text
+
+    @staticmethod
     def is_fatal(err):
-        return isinstance(err, (openai.AuthenticationError, openai.PermissionDeniedError, openai.NotFoundError))
+        return (isinstance(err, (openai.AuthenticationError, openai.PermissionDeniedError, openai.NotFoundError))
+                or OpenAILLM.quota_exhausted(err))
 
     @staticmethod
     def is_transient(err):
+        if OpenAILLM.quota_exhausted(err):
+            return False
         return isinstance(err, openai.RateLimitError) or (isinstance(err, openai.APIStatusError) and err.status_code >= 500)

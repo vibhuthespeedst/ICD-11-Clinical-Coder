@@ -218,3 +218,19 @@ Newest last. Each entry is committed with the work it describes; "Commit" names 
 - **Options:** Leave tracebacks (normal for a CLI, but they show paths and are noisy for the graders).
 - **Evidence:** History scan with counts only: every commit on every branch and the local reflog, 178 KB of added lines plus all 7 versions of the JSON data files (31.8 MB): zero sk-, sk-ant-, sk-proj-, AIza, pk_ or PASSWORD/SECRET/DATABASE_URL values, and zero occurrences of my real key. The only pickle load reads the index the image builds itself (git- and docker-ignored). "cannot read the input file: FileNotFoundError", exit 1.
 - **Revisit:** Nothing.
+
+## 28. A spent quota is not a rate limit
+- **When:** 2026-11-05 05:10 IST
+- **Commit:** Treat a spent quota as fatal: drop the provider instead of retrying
+- **Decision:** A 429 that means the budget or daily quota is gone (OpenAI `insufficient_quota`, Google's per-day quota) now drops the provider at once, so the run falls through to the other provider or the offline coder instead of retrying until the time budget. Ordinary 429s still back off.
+- **Options:** Keep treating every 429 as temporary (what happened below).
+- **Evidence:** First full dev run on gemini-3.6-flash: only 8 of 60 notes got model answers. The free tier allows 20 requests per day per model (Google's 429 body: "limit: 20 ... per day"), so after the 3-note smoke test and 8 notes every request was refused; each remaining note spent about a minute retrying and the run ended after 1,645 s with every note still answered (offline). Its SCORE 55.4 is therefore mostly the offline coder, not a model score. I also deleted `work/`, which holds the dev cache, during that run; that lost the cached answers but did not cause the failures. New end-to-end test: with the quota spent, OpenAI is dropped within the first wave (at most 12 workers x the SDK's own 4 attempts = 48 requests), the run takes under 30 s, and all 60 notes get valid codes. 27 tests pass.
+- **Revisit:** A real model score needs more quota: a free model with a larger daily limit, or paid credit.
+
+## 29. Overfitting check: switch my hand rules off
+- **When:** 2026-11-05 05:10 IST
+- **Commit:** Treat a spent quota as fatal: drop the provider instead of retrying
+- **Decision:** Keep the hand rules, but treat any gain under about 3 points as noise and judge model-path changes on the synthetic notes, not the dev set.
+- **Options:** Drop the hand-made lay-term list, the part most inspired by the dev notes.
+- **Evidence:** Offline dev SCORE with everything on 53.3 (top1 41/60); without my lay-term list 51.7 (40/60), so WHO's synonyms now cover most of what it did; without my abbreviation list 50.0 (37/60); without the chapter 26 and .Y penalties 48.3 (35/60); without any hand rule 44.2 (32/60). The gains come mostly from standard abbreviations and the brief's own .Z rule, which carry to any clinic. Noise: with 60 notes, a top-1 of 68% has a standard error of about 6%, about +/- 3 points on the 75-point core.
+- **Revisit:** Re-run once the synthetic notes exist.
