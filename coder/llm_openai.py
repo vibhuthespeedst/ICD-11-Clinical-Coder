@@ -4,6 +4,8 @@ import re
 
 import openai
 
+from .jsonish import INSTRUCTION, parse_json
+
 PREFERRED = ["gpt-5.1-mini", "gpt-5-mini", "gpt-4.1-mini", "gpt-4o-mini"]
 PRICE = (0.25, 2.00)
 MODES = ["json_schema", "json_object", "text"]
@@ -37,7 +39,7 @@ class OpenAILLM:
         if MODES[mode] == "json_schema":
             kwargs["response_format"] = {"type": "json_schema", "json_schema": {"name": "result", "schema": schema, "strict": True}}
         else:
-            system += "\n\nReply with only one JSON object that matches this JSON Schema:\n" + json.dumps(schema)
+            system += INSTRUCTION + json.dumps(schema)
             if MODES[mode] == "json_object":
                 kwargs["response_format"] = {"type": "json_object"}
         return self.client.chat.completions.create(
@@ -62,9 +64,7 @@ class OpenAILLM:
         choice = resp.choices[0]
         if choice.finish_reason != "stop" or not choice.message.content:
             return None, cost
-        text = choice.message.content.strip()
-        text = re.sub(r"^```(?:json)?\s*|\s*```$", "", text)
-        return json.loads(text), cost
+        return parse_json(choice.message.content), cost
 
     @staticmethod
     def is_fatal(err):

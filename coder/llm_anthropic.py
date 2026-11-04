@@ -5,6 +5,8 @@ import threading
 
 import anthropic
 
+from .jsonish import INSTRUCTION, parse_json
+
 PRICES = {
     "claude-haiku-5-5": (0.10, 0.50),
     "claude-haiku-4-5": (1.00, 5.00),
@@ -24,6 +26,7 @@ class AnthropicLLM:
         self.effort = os.environ.get("CODER_EFFORT", "medium")
         self.client = anthropic.Anthropic(max_retries=3, timeout=90.0)
         self.lock = threading.Lock()
+        self.mode = 0
 
     def _next_model(self, failed):
         with self.lock:
@@ -36,30 +39,47 @@ class AnthropicLLM:
             print(f"anthropic: {failed} unavailable, trying {self.model}", file=sys.stderr)
             return True
 
+    def _create(self, model, system, user, schema, mode):
+        kwargs = {}
+        output_config = {}
+        if mode == 0:
+            output_config["format"] = {"type": "json_schema", "schema": schema}
+        else:
+            system += INSTRUCTION + json.dumps(schema)
+        if mode < 2 and not model.startswith("claude-haiku-4"):
+            output_config["effort"] = self.effort
+        if output_config:
+            kwargs["output_config"] = output_config
+        return self.client.messages.create(
+            model=model,
+            max_tokens=8000,
+            system=system,
+            messages=[{"role": "user", "content": user}],
+            **kwargs,
+        )
+
     def complete(self, system, user, schema):
         while True:
-            model = self.model
-            output_config = {"format": {"type": "json_schema", "schema": schema}}
-            if not model.startswith("claude-haiku-4"):
-                output_config["effort"] = self.effort
+            model, mode = self.model, self.mode
             try:
-                resp = self.client.messages.create(
-                    model=model,
-                    max_tokens=8000,
-                    system=system,
-                    messages=[{"role": "user", "content": user}],
-                    output_config=output_config,
-                )
+                resp = self._create(model, system, user, schema, mode)
                 break
             except anthropic.NotFoundError:
                 if not self._next_model(model):
                     raise
+            except anthropic.BadRequestError:
+                if mode >= 2:
+                    raise
+                with self.lock:
+                    if self.mode == mode:
+                        self.mode = mode + 1
+                        print(f"anthropic: request rejected, retrying with output mode {self.mode}", file=sys.stderr)
         pin, pout = PRICES.get(model, (4.00, 20.00))
         cost = (resp.usage.input_tokens * pin + resp.usage.output_tokens * pout) / 1e6
         if resp.stop_reason != "end_turn":
             return None, cost
         text = next((b.text for b in resp.content if b.type == "text"), None)
-        return (json.loads(text) if text else None), cost
+        return (parse_json(text) if text else None), cost
 
     @staticmethod
     def is_fatal(err):

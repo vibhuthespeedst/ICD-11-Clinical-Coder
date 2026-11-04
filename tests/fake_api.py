@@ -17,10 +17,12 @@ class FakeAPI:
     """Local stand-in for the Anthropic and OpenAI HTTP APIs: answers the extract step with a fixed
     diagnosis and the choose step with the first three candidates it was shown."""
 
-    def __init__(self, fail_first=0, reject_schema=False, models=("gpt-5.1-mini",), delay=0.0, rate_per_sec=None):
+    def __init__(self, fail_first=0, reject_schema=False, models=("gpt-5.1-mini",), delay=0.0, rate_per_sec=None,
+                 reject_anthropic_format=False):
         self.requests = []
         self.delay = delay
         self.rate_per_sec = rate_per_sec
+        self.reject_anthropic_format = reject_anthropic_format
         self.recent = []
         self.rejected = 0
         self.fail_first = fail_first
@@ -64,11 +66,17 @@ class FakeAPI:
                 if failing:
                     self.send(429, {"type": "error", "error": {"type": "rate_limit_error", "message": "slow down"}}, [("retry-after", "1" if api.rate_per_sec else "0")])
                 elif self.path.endswith("/v1/messages"):
-                    schema = body["output_config"]["format"]["schema"]
+                    fmt = (body.get("output_config") or {}).get("format")
+                    if api.reject_anthropic_format and fmt:
+                        self.send(400, {"type": "error", "error": {"type": "invalid_request_error", "message": "output_config.format not supported"}})
+                        return
+                    extract = "icd10_codes" in json.dumps(body.get("system", ""))
+                    schema = fmt["schema"] if fmt else {"properties": {"icd10_codes": {}} if extract else {}}
                     out = api.answer(schema, body["messages"][0]["content"])
+                    text = json.dumps(out) if fmt else "Here is the result:\n```json\n" + json.dumps(out) + "\n```"
                     self.send(200, {
                         "id": "msg_fake", "type": "message", "role": "assistant", "model": body["model"],
-                        "content": [{"type": "text", "text": json.dumps(out)}],
+                        "content": [{"type": "text", "text": text}],
                         "stop_reason": "end_turn", "stop_sequence": None,
                         "usage": {"input_tokens": 100, "output_tokens": 20},
                     })

@@ -119,5 +119,18 @@ class EndToEndTest(unittest.TestCase):
         self.assertGreater(api.rejected, 0)
 
 
+    def test_anthropic_steps_down_when_structured_output_is_rejected(self):
+        api = FakeAPI(reject_anthropic_format=True)
+        try:
+            r, preds = self.run_cli({"ANTHROPIC_API_KEY": "fake-key", "ANTHROPIC_BASE_URL": api.url})
+        finally:
+            api.close()
+        self.check(r, preds)
+        posts = [q for q in api.requests if q["path"].endswith("/v1/messages")]
+        self.assertNotIn("format", posts[-1]["body"].get("output_config", {}))
+        self.assertIn("JSON Schema", json.dumps(posts[-1]["body"]["system"]))
+        self.assertNotIn("disabled", r.stderr)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -178,3 +178,11 @@ Newest last. Each entry is committed with the work it describes; "Commit" names 
 - **Options:** Build at start (works, 6.9 s); ship a prebuilt file in the repo (stale the moment code changes).
 - **Evidence:** Build at start 6.9 s; pickle 16 MB, loads in 0.2 s, same answers. Offline run of the 60 dev notes: about 0.6 s with the pickle. 19 tests pass.
 - **Revisit:** Nothing.
+
+## 23. Claude: step down when the request format is rejected
+- **When:** 2026-11-05 03:58 IST
+- **Commit:** Claude: fall back from structured output to JSON in the prompt on a 400
+- **Decision:** Sugen provides no dev keys, so my Claude requests may never meet the real API before grading. If the API rejects them (400), every call would fail and, after 10, the Claude path would be dropped for the run. Like the OpenAI client, the Anthropic client now steps down for the rest of the run: structured output with effort, then effort with the JSON Schema written into the system prompt, then a plain request. A shared `parse_json` reads an object out of fenced or chatty replies.
+- **Options:** Trust that the request shape is accepted (cheap, but one wrong field costs the whole model path).
+- **Evidence:** End-to-end test with the fake API rejecting `output_config.format`: one 400, then all 60 notes answered by the model path from fenced replies, no provider dropped. 21 tests pass; dev SCORE unchanged at 53.3.
+- **Revisit:** Drop the fallback once a real call confirms the request shape.

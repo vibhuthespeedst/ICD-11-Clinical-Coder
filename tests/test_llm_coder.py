@@ -204,5 +204,14 @@ class RateLimitTest(unittest.TestCase):
         self.assertEqual(t.limit, 4)
 
 
+class ParseJsonTest(unittest.TestCase):
+    def test_fences_and_prose_around_the_object(self):
+        from coder.jsonish import parse_json
+        self.assertEqual(parse_json('{"codes": ["1F40.Z"]}'), {"codes": ["1F40.Z"]})
+        self.assertEqual(parse_json('Sure.\n```json\n{"codes": ["1F40.Z"]}\n```'), {"codes": ["1F40.Z"]})
+        with self.assertRaises(ValueError):
+            parse_json("no json here")
+
+
 if __name__ == "__main__":
     unittest.main()
