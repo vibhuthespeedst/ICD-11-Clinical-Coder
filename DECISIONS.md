@@ -258,3 +258,11 @@ Newest last. Each entry is committed with the work it describes; "Commit" names 
 - **Options:** Hold out dev notes (60 is already too few).
 - **Evidence:** 145 of 150 written (1 dropped by the language check, 4 lost to 500/connection errors). Coding hit the 50-minute budget under the free tier's per-minute limit (cap at 1 call in flight), so only 66 notes got model answers; the whole-set SCORE 13.9/25 mixes model and offline answers. Split by who answered: model path 61 notes, top1 79%, top3 89% (about 20.5/25 if every note were like these); offline 84 notes, top1 32%, top3 45% (about 9.1/25). Non-English model-coded notes: 22/28 top1 (79%), the same as English (26/33): Arabic 6/6, Swahili 4/5, Portuguese 4/5, Spanish 3/4, Hindi 3/5. Caveats: codes are sampled evenly across the list, so they are rarer than clinic reality (harder); a model wrote each note knowing its code (cleaner than real notes); "model-coded" is inferred as "differs from the offline answer", which misses the 5 notes where both agreed.
 - **Revisit:** Finish coding the remaining notes when quota allows; hand-check a sample of notes against their codes.
+
+## 33. Retry one unparseable reply; full synthetic baseline
+- **When:** 2026-11-05 19:41 IST
+- **Commit:** Retry a reply that is not valid JSON once, without slowing the throttle
+- **Decision:** A reply that fails to parse is now retried once straight away. It is not a rate limit, so it does not halve the cap on calls in flight; a second bad reply counts as an ordinary error.
+- **Options:** Count it as an error (the note falls back to its offline codes).
+- **Evidence:** Full synthetic run on gemini-3.5-flash-lite (cached answers reused): 142/145 notes answered by the model path in 684 s; 2 lost to JSONDecodeError and 1 to a 503. SCORE 20.5/25 (top1 78.6%, top3 89.0%), the same as the partial estimate in entry 32. Unit test: one broken reply then a good one gives the right code and the cap stays at its maximum.
+- **Revisit:** Nothing.

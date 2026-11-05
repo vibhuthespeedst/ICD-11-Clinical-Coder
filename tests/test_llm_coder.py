@@ -212,6 +212,22 @@ class ParseJsonTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             parse_json("no json here")
 
+    def test_one_broken_reply_is_retried_once(self):
+        import json as _json
+
+        class BrokenOnce(Stub):
+            calls = 0
+
+            def complete(self, system, user, schema):
+                BrokenOnce.calls += 1
+                if BrokenOnce.calls == 1:
+                    raise _json.JSONDecodeError("Expecting value", "", 0)
+                return super().complete(system, user, schema)
+
+        router = Router([BrokenOnce(EXTRACT, {"codes": ["1F40.Z"]})], budget_usd=1.0)
+        self.assertEqual(LLMCoder(OFFLINE, router).predict(NOTE)[0], "1F40.Z")
+        self.assertEqual(router.throttle.limit, router.throttle.max)
+
 
 if __name__ == "__main__":
     unittest.main()

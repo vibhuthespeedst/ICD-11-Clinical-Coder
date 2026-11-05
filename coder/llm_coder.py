@@ -144,10 +144,16 @@ class Router:
 
     def _call(self, p, system, user, schema):
         transient = getattr(p, "is_transient", lambda e: False)
+        bad_json = 0
         for attempt in range(self.retries):
             try:
                 with self.throttle:
                     return p.complete(system, user, schema)
+            except json.JSONDecodeError:
+                bad_json += 1
+                if bad_json > 1:
+                    raise
+                continue
             except Exception as e:
                 if not transient(e) or attempt == self.retries - 1:
                     raise
