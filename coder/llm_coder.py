@@ -47,13 +47,16 @@ class Cached:
     def complete(self, system, user, schema):
         blob = json.dumps([self.inner.name, self.inner.model, system, user, schema], sort_keys=True)
         path = os.path.join(self.folder, hashlib.sha256(blob.encode("utf-8")).hexdigest() + ".json")
-        if os.path.exists(path):
+        try:
             with open(path, encoding="utf-8") as f:
                 return json.load(f), 0.0
+        except (OSError, ValueError):
+            pass
         out, cost = self.inner.complete(system, user, schema)
         if out is not None:
-            with open(path, "w", encoding="utf-8") as f:
+            with open(path + ".tmp", "w", encoding="utf-8") as f:
                 json.dump(out, f)
+            os.replace(path + ".tmp", path)
         return out, cost
 
 
@@ -228,7 +231,7 @@ class LLMCoder:
             for q in [d.get("term", "")] + list(d.get("search_terms", [])):
                 if not tokens(q):
                     continue
-                ranked, _ = self.offline.rank(q, k=6)
+                ranked, _ = self.offline.rank(q, k=6, english=True)
                 for c in ranked[:4]:
                     add(self.family(c, cap=25))
         ranked, _ = self.offline.rank(note, k=8)

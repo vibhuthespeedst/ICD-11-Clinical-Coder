@@ -282,3 +282,19 @@ Newest last. Each entry is committed with the work it describes; "Commit" names 
 - **Options:** Slot 2; slot 3; none.
 - **Evidence:** Simulated on the saved predictions, no API calls: dev top3 59 -> 60/60 (it rescues dev-057, the note that inspired it); synthetic top3 129 -> 128/145, the same for slot 2 and slot 3. It helps only the notes it was designed from.
 - **Revisit:** Nothing.
+
+## 36. Write dev-cache files atomically
+- **When:** 2026-11-06 02:52 IST
+- **Commit:** No-key path for non-English notes; atomic dev-cache writes
+- **Decision:** The dev cache now writes to a temp file and renames it, and treats an unreadable file as a miss. A background run cut off by a session ending had left a half-written cache file, and every later read of that request failed.
+- **Options:** Delete broken files by hand when they show up.
+- **Evidence:** The broken file crashed a measurement script; with the fix the same files are skipped and re-fetched. Dev-only: compose never sets `CODER_CACHE_DIR`.
+- **Revisit:** Nothing.
+
+## 37. No-key path for notes not in English
+- **When:** 2026-11-06 02:52 IST
+- **Commit:** No-key path for non-English notes; atomic dev-cache writes
+- **Decision:** A small language check (`is_english`: share of non-Latin script, else common English words against common Spanish, French, Portuguese and Swahili words, ignoring one-letter words and the shared "no") sends notes that are not in English to a second BM25 index that also holds WHO's Spanish, French, Portuguese and Arabic titles and synonyms, and drops Romance function words (de, los, con, en...) from those queries. English notes and the model's English search terms keep the English index. The image prebuilds both indexes.
+- **Options:** All languages for every note (51.2 on dev in entry 14); a shared stop list for Romance function words (tried: dev top1 41 -> 40, because words such as "son" and "do" are also English); leave the no-key path English-only (WHO's other-language data unused).
+- **Evidence:** Language check: dev 60/60 English, synthetic 73/73 English and 71/72 non-English right (one Swahili note is partly English). No-key scores: dev 53.3 unchanged (the second index is never touched); synthetic non-English top1 10% -> 19%, top3 14% -> 31%; synthetic overall 8.1 -> 9.6 / 25; realistic Spanish notes for frozen shoulder, urinary schistosomiasis and tungiasis now code correctly first (English terms only: none). Without the function-word filter tungiasis scored 14.9 against 25-27 for codes that merely shared "de", "los" and "con". Prebuilt pickle with both indexes: 76 MB, loads in 1.2 s. Also checked for long notes: the shortlist still holds gold for 100% of dev at the 90-code cap, and raising the cap to 150 adds 1 synthetic note.
+- **Revisit:** Whether a 150-code shortlist helps the model's choice (needs a real run).

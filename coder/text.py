@@ -122,3 +122,31 @@ def weighted_query(text):
     for m in DOCTOR_SAYS.finditer(text):
         add(m.group(1), 1.5)
     return weights
+
+
+ENGLISH_WORDS = set("""the and with for of to in is was patient doctor not has have you your she he his her they this that
+on at as are be pain fever days history plan review today since about when""".split())
+OTHER_WORDS = {
+    "es": set("""de la que el en y los del se las por un para con una su al lo como más pero sus le ya fue este ha porque esta
+son entre cuando muy sin sobre también hasta hay donde desde durante les ni ese eso esto antes otro otra él ella paciente
+dolor presenta refiere días""".split()),
+    "fr": set("""le la les de des du un une et est en que qui dans pour pas sur au aux avec il elle ce cette son sa ses ou mais
+plus par patient patiente douleur depuis jours""".split()),
+    "pt": set("""os as de do da dos das em um uma que não com para por na nos nas ao ele ela paciente dor desde há
+dias""".split()),
+    "sw": set("""na ya wa kwa ni la za katika mgonjwa homa siku hana ana kwamba lakini pia hii huu daktari""".split()),
+}
+FUNCTION_WORDS = set("""de la el en lo los las del con por para una un uno que se su sus al como más pero ya fue este esta son entre
+cuando muy sin sobre también hasta hay donde desde durante les ni ese eso esto antes otro otra él ella le du des et est dans pour
+pas sur au aux avec il ce cette son sa ses ou mais plus par une os as do da dos das em um uma não com na nos nas ao ele há""".split())
+NON_LATIN = re.compile(r"[Ѐ-ӿ֐-ࣿऀ-෿฀-࿿ሀ-፿぀-鿿가-힯]")
+
+
+def is_english(text):
+    letters = re.findall(r"[^\W\d_]", text)
+    if letters and len(NON_LATIN.findall(text)) / len(letters) > 0.3:
+        return False
+    words = [w for w in re.findall(r"[^\W\d_]+", text.lower()) if len(w) > 1]
+    english = sum(w in ENGLISH_WORDS for w in words)
+    other = max(sum(w in s for w in words) for s in OTHER_WORDS.values())
+    return english >= other

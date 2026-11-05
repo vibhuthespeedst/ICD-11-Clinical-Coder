@@ -12,16 +12,16 @@ Local runs add `-f docker-compose.yml -f compose.dev.yml` to mount `./in` and `.
 
 | | Dev, 60 notes (score.py) | Synthetic, 145 notes |
 |---|---|---|
-| No key (offline coder) | 53.3 / 75 | 8.1 / 25 (top1 28%) |
+| No key (offline coder) | 53.3 / 75 | 9.6 / 25 (top1 33%) |
 | Model path, gemini-3.5-flash-lite (free tier) | 72.9 / 75 (top1 58/60, top3 59/60) | 20.7 / 25 (top1 80%, top3 89%) |
 
 I had no paid key, so these are free Gemini models, not the Claude or OpenAI models you grade with.
 
-**Hidden-set estimate:** 64-70 / 75 on the core slice (I saw the dev notes while designing, and 60 notes carry about +/- 3 points of noise) and 18-21 / 25 on generalisation: roughly 82-90 / 100. With no working key, about 53-61.
+**Hidden-set estimate:** 64-70 / 75 on the core slice (I saw the dev notes while designing, and 60 notes carry about +/- 3 points of noise) and 18-21 / 25 on generalisation: roughly 82-90 / 100. With no working key, about 55-63.
 
 ## How it works
 
-1. **Offline first.** BM25 over every MMS title, its parents and WHO's synonyms writes codes for every note before any API call.
+1. **Offline first.** BM25 over every MMS title, its parents and WHO's synonyms (plus WHO's Spanish, French, Portuguese and Arabic terms for notes not in English) writes codes for every note before any API call.
 2. **Model path.** Call 1 reads the note in any language and returns English diagnoses, the deciding details and ICD-10 codes. A shortlist comes from WHO's ICD-10 to ICD-11 table, the search and every child of each hit. Call 2 picks up to three codes from that list only, each checked against the MMS.
 3. **Run time.** A spend cap shared across providers, a 50-minute stop, adaptive concurrency on rate limits, fallbacks across providers, models and output formats, and predictions rewritten as answers arrive.
 
