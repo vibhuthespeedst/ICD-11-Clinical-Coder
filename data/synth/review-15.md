@@ -51,7 +51,7 @@ Write `OK` or `WRONG: <short reason>` on the Verdict line. Specific codes need t
 
 > Pt: 28F, healthy, presents with concerns regarding persistent lack of sexual interest. Hx: Pt reports she has never experienced sexual desire in her life. However, she notes that this absence of desire is strictly limited to her current long-term partner of 3 years. When asked about other potential partners or past crushes, she describes feeling normal libido levels, confirming this is a situational response to her current relationship dynamic. No history of sexual trauma or hormonal imbalances. Ex: Vitals stable. Pmh: Unremarkable. Exam: Vagina healthy, no signs of atrophy or inflammation. Pelvic floor tone WNL. Imp: Hypoactive sexual desire dysfunction, lifelong, situational. Unlike generalized forms, her libido is intact in other contexts, indicating a specific relational trigger rather than a systemic or neurobiological baseline deficit. Plan: Referral to couples therapy to address interpersonal conflict and relational dynamics. Discussed communication exercises and scheduling intimate time. Follow up in 6 weeks to evaluate if shift in relational satisfaction impacts her subjective desire levels. Education provided on arousal non-concordance.
 
-**Verdict:** OK
+**Verdict:** WRONG: she has normal desire with past crushes and other partners, and the low desire is limited to a 3-year relationship, which is acquired and situational (HA00.3); the note's "never experienced desire" line contradicts that.
 
 ## synth-004  (ambient_transcript)
 

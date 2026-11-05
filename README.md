@@ -35,7 +35,7 @@ ICD-11 content is © World Health Organization, CC BY-ND 3.0 IGO.
 ## Evaluation beyond the 60 dev notes
 
 - **145 synthetic notes** over 23 chapters and 8 languages, written by a different model from the coder. Non-English notes score close to English (top1 78% against 82%).
-- **A hand check** of 15 of them: 13 fit their codes and 2 did not, so the synthetic score is a rough guide.
+- **A hand check** of 15 of them: 12 fit their codes and 3 did not, so the synthetic score is a rough guide.
 - **Overfitting checks:** hand rules switched off one at a time; prompt changes judged on the synthetic notes, not the dev set; one rule that helped only dev was dropped.
 - **Failure paths, no key needed:** a local fake of both APIs drives the real SDKs, and CI runs the exact grading command from a clean checkout, with read-only `/in`, with no network, and behind a proxy that allows only the two model APIs.
 
@@ -48,7 +48,7 @@ Identifiers are stripped before a note leaves the machine, logs carry error type
 1. **It sent patient details it did not need.** The insurance code only needs the diagnosis and the clinical details, but the first version sent each whole note to the AI provider, including any name, phone number, ID or date of birth in it. It also printed the provider's error messages into the log, where they can repeat the note. I caught this with a privacy review. Those details are now removed before a note leaves the machine, and the log keeps only the type of error.
 2. **Its error messages showed too much.** A missing input file printed a long error listing the program's internal folders and files, when it only needed to say the file was not found. I caught this with a security checklist; it now prints one line.
 3. **One of its instructions was wrong.** It told the model to choose "other specified" when a note said "primary", but for "primary hypothyroidism" the right answer is "unspecified". A stronger model made the same mistake on the hardest notes, which showed the instruction was at fault, not the model. The rule was rewritten and checked on notes the design had never seen.
-4. **Some of its test notes did not match their labels.** Reading 15 of them, I found 2 that described a neighbouring condition: fingers joined by skin only, labelled "fused fingers", and divergence insufficiency labelled "synergistic divergence". So I treat the synthetic score as a rough guide.
+4. **Some of its test notes did not match their labels.** Reading 15 of them, I found 3 whose details did not support their code: fingers joined by skin only, labelled "fused fingers"; divergence insufficiency labelled "synergistic divergence"; and low desire that began in one relationship, labelled "lifelong". So I treat the synthetic score as a rough guide.
 
 ## Hours
 
