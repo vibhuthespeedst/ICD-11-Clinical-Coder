@@ -250,3 +250,11 @@ Newest last. Each entry is committed with the work it describes; "Commit" names 
 - **Options:** Hash pinning (`--require-hashes`): pydantic-core and jiter ship different wheels per CPU, and hashes taken on this x86 laptop could fail on an ARM grading box, which means rejection. A plain tag (`python:3.13-slim`) can change under me.
 - **Evidence:** The digest is an OCI index covering linux/amd64 and linux/arm64 among others. A fresh venv built from the file with `--no-deps`: `pip check` clean, both SDKs import. My first attempt wrote the Dockerfile change before the requirements file (the editor refused the write), which would have failed the build; caught before commit.
 - **Revisit:** Nothing.
+
+## 32. Synthetic notes: the model path holds up on other chapters and languages
+- **When:** 2026-11-05 11:25 IST
+- **Commit:** Add the synthetic test set and its first scores
+- **Decision:** Keep `data/synth/synth-v1.jsonl` (145 notes) as the held-out check for anything tuned on the dev notes. Notes were written by gemini-3.1-flash-lite and coded by gemini-3.5-flash-lite, so the writer is not the coder.
+- **Options:** Hold out dev notes (60 is already too few).
+- **Evidence:** 145 of 150 written (1 dropped by the language check, 4 lost to 500/connection errors). Coding hit the 50-minute budget under the free tier's per-minute limit (cap at 1 call in flight), so only 66 notes got model answers; the whole-set SCORE 13.9/25 mixes model and offline answers. Split by who answered: model path 61 notes, top1 79%, top3 89% (about 20.5/25 if every note were like these); offline 84 notes, top1 32%, top3 45% (about 9.1/25). Non-English model-coded notes: 22/28 top1 (79%), the same as English (26/33): Arabic 6/6, Swahili 4/5, Portuguese 4/5, Spanish 3/4, Hindi 3/5. Caveats: codes are sampled evenly across the list, so they are rarer than clinic reality (harder); a model wrote each note knowing its code (cleaner than real notes); "model-coded" is inferred as "differs from the offline answer", which misses the 5 notes where both agreed.
+- **Revisit:** Finish coding the remaining notes when quota allows; hand-check a sample of notes against their codes.
