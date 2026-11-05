@@ -266,3 +266,19 @@ Newest last. Each entry is committed with the work it describes; "Commit" names 
 - **Options:** Count it as an error (the note falls back to its offline codes).
 - **Evidence:** Full synthetic run on gemini-3.5-flash-lite (cached answers reused): 142/145 notes answered by the model path in 684 s; 2 lost to JSONDecodeError and 1 to a 503. SCORE 20.5/25 (top1 78.6%, top3 89.0%), the same as the partial estimate in entry 32. Unit test: one broken reply then a good one gives the right code and the cap stays at its maximum.
 - **Revisit:** Nothing.
+
+## 34. Choose step: a specific code needs its defining detail stated or measured
+- **When:** 2026-11-05 19:59 IST
+- **Commit:** Choose step: specific codes need their detail stated or measured; descriptors alone lead to .Z
+- **Decision:** Rules 2-3 of the choose prompt now say: pick a specific child only when the note states what defines it, in words or from measurements such as blood pressure, BMI or lab results, and do not assume a usual type; a description such as "primary" or "adult onset" counts only when a listed child names it, otherwise it leads to .Z; .Y only for a type clearly different from every listed child. My first wording also listed "uncomplicated" as a mere descriptor; that would have broken real children such as "Varicella without complication" (dev gold), so I removed it before running.
+- **Options:** Leave the prompt (its old .Y wording told the model to pick .Y for "primary hypothyroidism"); rely on a stronger model: gemini-3.6-flash on the 9 hard notes fixed the GORD and HTN misses but still chose "primary OA" and .Y.
+- **Evidence:** gemini-3.5-flash-lite, same cached first calls, only the choose calls re-run. Dev 71.7 -> 72.9 (top1 56 -> 58/60, top3 60 -> 59/60): fixed dev-028 (GORD -> DA22.Z) and dev-042 (HTN stage 2 -> BA00.0 from the BP); dev-057 still .Y and its .Z fell out of the top 3. Synthetic 20.5 -> 20.7 (top1 78.6% -> 80.0%, top3 89.0% both): 4 fixed, 2 broken, spread over unrelated conditions, which looks like run-to-run variation. Both changes are within noise; kept because it removes a wrong instruction and does not hurt the held-out notes.
+- **Revisit:** Repeat runs to measure run-to-run variance.
+
+## 35. Tried and dropped: always put the .Z sibling in the top 3
+- **When:** 2026-11-05 19:59 IST
+- **Commit:** Choose step: specific codes need their detail stated or measured; descriptors alone lead to .Z
+- **Decision:** No post-processing hedge. The idea: when the first code is not .Z, insert its .Z sibling into slot 2 or 3.
+- **Options:** Slot 2; slot 3; none.
+- **Evidence:** Simulated on the saved predictions, no API calls: dev top3 59 -> 60/60 (it rescues dev-057, the note that inspired it); synthetic top3 129 -> 128/145, the same for slot 2 and slot 3. It helps only the notes it was designed from.
+- **Revisit:** Nothing.

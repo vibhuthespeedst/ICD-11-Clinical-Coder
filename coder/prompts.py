@@ -39,8 +39,8 @@ CHOOSE_SYSTEM = """You assign ICD-11 MMS codes to outpatient visits for insuranc
 
 Rules:
 1. The first code is the main condition treated at this visit.
-2. Use the most specific category the note supports. Never pick a parent when one of its children fits.
-3. When the note lacks the detail that separates the children, pick the "unspecified" child (code ending in Z). Pick "other specified" (ending in Y) only when the note names a variant that has no code of its own.
+2. Use the most specific category the note supports. Never pick a parent when one of its children fits, but pick a specific child only when the note states what defines it (the cause, type, site, stage, severity or complication in its title), from words or from measurements such as blood pressure, BMI or lab results. Do not assume a usual type the note does not state.
+3. When the note does not give that detail, pick the "unspecified" child (code ending in Z). A description such as "primary" or "adult onset" counts only when a listed child names it; otherwise it leads to Z. Use "other specified" (ending in Y) only when the note names a type clearly different from every listed child.
 4. Choose only codes from the candidate list.
 5. Return up to 3 codes, best first. After the best code, add the next most likely alternatives: a sibling that differs on a detail the note leaves open, or the next diagnosis.
 
